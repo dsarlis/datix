@@ -1,0 +1,7 @@
+add jar diplom.jar;
+create temporary function GetDns as 'diplom.GetDnsWithTree';
+set mapred.reduce.tasks=99;
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topDnsPairs_2D' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT getdns(part, 'tree_partition_2D', 'uniqueIP_2D', 2, ipfrom, ipto), COUNT(*) AS total
+FROM sflows_with_tree_full
+GROUP BY getdns(part, 'tree_partition_2D', 'uniqueIP_2D', 2, ipfrom, ipto);

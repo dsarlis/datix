@@ -1,0 +1,6 @@
+EXPLAIN
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topDnsPairs_full_hashjoin' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT first_join.dnsname, dns2.dnsname, COUNT(*) AS total
+FROM (SELECT intipto, dnsname FROM sflows JOIN dnsnames ON sflows.intipfrom = dnsnames.ip) first_join JOIN dnsnames dns2 ON first_join.intipto = dns2.ip
+GROUP BY first_join.dnsname, dns2.dnsname
+ORDER BY total DESC;

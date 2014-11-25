@@ -1,0 +1,9 @@
+add jar diplom.jar;
+create temporary function GetAS as 'diplom.GetAS';
+add file /data/GeoIPASNum2.csv;
+EXPLAIN
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topASIngoing_full' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT getas(ipto, './GeoIPASNum2.csv'), COUNT(*) AS ingoing
+FROM sflows
+GROUP BY getas(ipto, './GeoIPASNum2.csv')
+ORDER BY ingoing DESC;

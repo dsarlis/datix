@@ -1,0 +1,5 @@
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topDnsIngoing_full_hashjoin' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT ipto, dnsname, COUNT(*) AS ingoing
+FROM sflows LEFT OUTER JOIN dnsnames ON sflows.intipto = dnsnames.ip
+GROUP BY ipto, dnsname
+ORDER BY ingoing DESC;

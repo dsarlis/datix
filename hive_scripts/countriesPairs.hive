@@ -1,0 +1,8 @@
+add jar diplom.jar;
+create temporary function GetCountry as 'diplom.GetCountry';
+add file /data/GeoIPCountryWhois.csv;
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topCountriesPairs_full_shark' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT getcountry(ipfrom, './GeoIPCountryWhois.csv'), getcountry(ipto, './GeoIPCountryWhois.csv'), COUNT(*) AS pairs 
+FROM sflows
+GROUP BY getcountry(ipfrom, './GeoIPCountryWhois.csv'), getcountry(ipto, './GeoIPCountryWhois.csv') 
+ORDER BY pairs DESC;

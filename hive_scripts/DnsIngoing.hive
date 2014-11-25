@@ -1,0 +1,8 @@
+add jar diplom.jar;
+create temporary function GetDns as 'diplom.GetDnsFast';
+add file /data/PartitionFile_2;
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topDnsIngoing_full_fast' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT ipto, getdns(part, ipto, './PartitionFile_2'), COUNT(*) AS ingoing
+FROM sflows_prepared_2_non_empty
+GROUP BY ipto, getdns(part, ipto, './PartitionFile_2')
+ORDER BY ingoing DESC;

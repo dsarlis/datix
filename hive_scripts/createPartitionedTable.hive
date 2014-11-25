@@ -1,0 +1,13 @@
+set mapred.output.compress=true;
+set hive.exec.compress.output=true;
+set mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCodec;
+set io.compression.codecs=org.apache.hadoop.io.compress.GzipCodec; 
+set hive.exec.dynamic.partition=true;
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.exec.max.dynamic.partitions.pernode=500;
+set hive.exec.max.created.files=150000;
+
+INSERT OVERWRITE TABLE sflows_with_tree_partitioned
+PARTITION(part)
+SELECT ipFrom, intIPFrom, ipTo, intIPTo, protocol, srcPort, dstPort, ipSize, date, part
+FROM sflows_with_tree_full;

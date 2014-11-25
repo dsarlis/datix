@@ -1,0 +1,5 @@
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topASPairs_simple_full' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT first_join.asName, as2.asName, COUNT(*) as total
+FROM (SELECT intipto, asName FROM sflows JOIN ases ON sflows.intipfrom = ases.ip) first_join JOIN ases as2 ON first_join.intipto = as2.ip
+GROUP BY first_join.asName, as2.asName
+ORDER BY total DESC;

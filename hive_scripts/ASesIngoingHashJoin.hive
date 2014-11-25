@@ -1,0 +1,6 @@
+EXPLAIN
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topASIngoing_full_hashjoin_2' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT ases.asName, COUNT(*) AS ingoing
+FROM sflows JOIN ases ON sflows.intipto = ases.ip 
+GROUP BY ases.asName
+ORDER BY ingoing DESC;

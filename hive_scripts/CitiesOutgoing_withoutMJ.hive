@@ -1,0 +1,9 @@
+add jar diplom.jar;
+create temporary function GetLocData as 'diplom.GetLocData';
+add file /data/GeoLiteCity_20140506/GeoLiteCity-Blocks.csv;
+add file /data/GeoLiteCity_20140506/GeoLiteCity-Location.csv;
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topCitiesOutgoing_withoutMJ' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT getlocdata(ipfrom, './GeoLiteCity-Blocks.csv', './GeoLiteCity-Location.csv'), COUNT(*) AS outgoing
+FROM packetsBig
+GROUP BY getlocdata(ipfrom, './GeoLiteCity-Blocks.csv', './GeoLiteCity-Location.csv')
+ORDER BY outgoing DESC;

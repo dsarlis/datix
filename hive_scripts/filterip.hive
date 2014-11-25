@@ -1,0 +1,7 @@
+add jar diplom.jar;
+create temporary function FilterIP as 'diplom.FilterIP';
+add file /data/Google-Servers.dat;
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/FilterIP' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT filterip(ipfrom, ipto, './Google-Servers.dat'), COUNT(*)
+FROM sflows
+GROUP BY filterip(ipfrom, ipto, './Google-Servers.dat');

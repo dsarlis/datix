@@ -1,0 +1,9 @@
+add jar diplom.jar;
+create temporary function GetDns as 'diplom.GetDnsFast';
+add file /data/PartitionFile_2;
+EXPLAIN
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topDnsPairs_full_fast' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT getdns(part, './PartitionFile_2', ipFrom, ipTo), COUNT(*) AS total
+FROM sflows_prepared_2_non_empty
+GROUP BY getdns(part, './PartitionFile_2', ipFrom, ipTo)
+ORDER BY total DESC;

@@ -1,0 +1,7 @@
+add jar diplom.jar;
+create temporary function GetDns as 'diplom.GetDnsWithTree';
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topDnsIngoing_3D_one_week' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT ipto, getdns(int(part), ipto, 'tree_partition_3D', 'uniqueIP_3D', 3), COUNT(*) AS ingoing
+FROM sflows_with_tree_partitioned
+GROUP BY ipto, getdns(int(part), ipto, 'tree_partition_3D', 'uniqueIP_3D', 3)
+ORDER BY ingoing DESC;

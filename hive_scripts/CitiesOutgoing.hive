@@ -1,0 +1,9 @@
+set hive.auto.convert.join = true;
+add jar diplom.jar;
+create temporary function GetLocid as 'diplom.GetLocid';
+add file /data/GeoLiteCity_20140506/GeoLiteCity-Blocks.csv;
+INSERT OVERWRITE LOCAL DIRECTORY 'outputs/topCitiesOutgoing' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n'
+SELECT /*+ MAPJOIN(location) */ city, COUNT(*) AS outgoing
+FROM packetsBig JOIN location ON getlocid(packetsBig.ipfrom, './GeoLiteCity-Blocks.csv') = location.id
+GROUP BY city
+ORDER BY outgoing DESC;
