@@ -1,4 +1,4 @@
 datix
 =====
 
-Datix: A Scalable System for Network Analytics
+Datix: A System for Scalable Network Analytics
