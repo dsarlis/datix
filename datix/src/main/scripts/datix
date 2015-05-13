@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# This is the init script for the Datix Server daemon.
+# When deployed, it should be placed under /etc/init.d/
+# to be executed as a service.
+
+[ -z "$DATIX_SERVER_HOME" ] && DATIX_SERVER_HOME="/home/dimitris/workspace/datix/target"
+
+LIB_DIR=$DATIX_SERVER_HOME/lib
+CONF_DIR=$DATIX_SERVER_HOME/conf
+
+
+CLASSPATH=$CONF_DIR
+CLASSPATH=$CLASSPATH:$(echo $LIB_DIR/*.jar | tr ' ' ':')
+CLASSPATH=$CLASSPATH:$DATIX_SERVER_HOME/datix-server.jar
+PIDFILE=/tmp/datix-server.pid
+
+start() {
+    [ -f $PIDFILE ] && echo "Datix Server already running ($(cat $PIDFILE))" && exit 0
+    java -Dname=datix-server -cp $CLASSPATH  gr.ntua.cslab.datix.daemon.Main &
+    echo $! > $PIDFILE;
+}
+
+stop() {
+    PID=$(cat $PIDFILE 2>/dev/null)
+    [ "$PID" == "" ] && echo "Datix Server not running" && exit 0
+    kill -TERM $PID
+    rm -f $PIDFILE 
+}
+
+status() {
+    if [ -f $PIDFILE ]; then
+        PID=$(cat $PIDFILE)
+        echo "Datix Server running ($PID)"
+    else
+        echo "Datix Server not running"
+    fi
+}
+
+case $1 in
+    start)
+        start;
+    ;;
+    stop)   
+        stop;
+    ;;
+    restart)    
+        stop && start;
+    ;;
+    status)   
+        status;
+    ;;
+    *)      
+        echo "$0 {start|stop|status|restart}"
+    ;;
+esac
+

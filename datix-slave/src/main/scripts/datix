@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# This is the init script for the Datix Slave daemon.
+# When deployed, it should be placed under /etc/init.d/
+# to be executed as a service.
+
+[ -z "$DATIX_SLAVE_HOME" ] && DATIX_SLAVE_HOME="/home/dimitris/workspace/datix-slave/target"
+
+LIB_DIR=$DATIX_SLAVE_HOME/lib
+CONF_DIR=$DATIX_SLAVE_HOME/conf
+
+
+CLASSPATH=$CONF_DIR
+CLASSPATH=$CLASSPATH:$(echo $LIB_DIR/*.jar | tr ' ' ':')
+CLASSPATH=$CLASSPATH:$DATIX_SLAVE_HOME/datix-slave.jar
+PIDFILE=/tmp/datix-slave.pid
+
+start() {
+    [ -f $PIDFILE ] && echo "Datix Slave already running ($(cat $PIDFILE))" && exit 0
+    java -Dname=datix-slave -cp $CLASSPATH  gr.ntua.cslab.datixSlave.daemon.Main &
+    echo $! > $PIDFILE;
+}
+
+stop() {
+    PID=$(cat $PIDFILE 2>/dev/null)
+    [ "$PID" == "" ] && echo "Datix Slave not running" && exit 0
+    kill -TERM $PID
+    rm -f $PIDFILE 
+}
+
+status() {
+    if [ -f $PIDFILE ]; then
+        PID=$(cat $PIDFILE)
+        echo "Datix Slave running ($PID)"
+    else
+        echo "Datix Slave not running"
+    fi
+}
+
+case $1 in
+    start)
+        start;
+    ;;
+    stop)   
+        stop;
+    ;;
+    restart)    
+        stop && start;
+    ;;
+    status)   
+        status;
+    ;;
+    *)      
+        echo "$0 {start|stop|status|restart}"
+    ;;
+esac
+
