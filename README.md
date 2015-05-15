@@ -11,6 +11,14 @@ Datix contributes the following:
 * Using this particular partitioning scheme, it is possible to efficiently execute filtering queries avoiding the need to process the entire dataset.
 * The above functionality is integrated into an open-source, SQL compliant network data analysis system by implementing distributed join algorithms, such as map join in combination with custom-made user-defined functions (UDFs) that are aware of the underlying data format.
 
+#Example Queries
+
+Find top-k AS pairs that exchange traffic for a period of one week.
+
+Find top-k reverse DNS lookup and sort them according to volume of outgoing traffic.
+
+Calculate the daily traffic of a specific web-server over time.
+
 #Copyright Information
 Datix was developed as part of my Diploma Thesis at the National Technical University of Athens.
 
