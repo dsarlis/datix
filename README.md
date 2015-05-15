@@ -26,6 +26,7 @@ Calculate the daily traffic of a specific web-server over time.
 * HBase 0.94.x
 * Hive >= 0.12
 * Spark >= 0.9.1
+* Shark 0.9.1
 
 #Copyright Information
 Datix was developed as part of my Diploma Thesis at the National Technical University of Athens.
