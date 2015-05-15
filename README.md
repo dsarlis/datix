@@ -19,6 +19,14 @@ Find top-k reverse DNS lookup and sort them according to volume of outgoing traf
 
 Calculate the daily traffic of a specific web-server over time.
 
+#Requirements
+
+* Java >= 1.7.x
+* Hadoop >= 1.2.1
+* HBase 0.94.x
+* Hive >= 0.12
+* Spark >= 0.9.1
+
 #Copyright Information
 Datix was developed as part of my Diploma Thesis at the National Technical University of Athens.
 
