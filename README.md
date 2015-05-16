@@ -13,11 +13,9 @@ Datix contributes the following:
 
 ##Example Queries
 
-Find top-k AS pairs that exchange traffic for a period of one week.
-
-Find top-k reverse DNS lookup and sort them according to volume of outgoing traffic.
-
-Calculate the daily traffic of a specific web-server over time.
+* Find top-k AS pairs that exchange traffic for a period of one week.
+* Find top-k reverse DNS lookup and sort them according to outgoing traffic volume.
+* Calculate the daily traffic of a specific web-server over time.
 
 ##Requirements
 
@@ -31,6 +29,6 @@ Calculate the daily traffic of a specific web-server over time.
 ##Copyright Information
 Datix was developed as part of my Diploma Thesis at the National Technical University of Athens.
 
-Copyright (C) 2014 Dimitrios Sarlis
+Copyright (C) 2014 Dimitris Sarlis
 
 All code is Licensed under the Apache License 2.0.
