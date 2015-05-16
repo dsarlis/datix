@@ -14,12 +14,12 @@ Datix contributes the following:
 ##Example Queries
 
 * Find top-k AS pairs that exchange traffic for a period of one week.
-```SQL
-SELECT getAS(ipFrom), getAS(ipTo), COUNT(*)
-FROM sFLows
-WHERE date >= '2014-01-15' and date <= '2014-01-22'
-LIMIT k
-```
+	```SQL
+	SELECT getAS(ipFrom), getAS(ipTo), COUNT(*)
+	FROM sFLows
+	WHERE date >= '2014-01-15' and date <= '2014-01-22'
+	LIMIT k
+	```
 * Find top-k reverse DNS lookup and sort them according to outgoing traffic volume.
 * Calculate the daily traffic of a specific web-server over time.
 
