@@ -26,6 +26,12 @@ Datix contributes the following:
 * Spark >= 0.9.1
 * Shark 0.9.1
 
+## Example Usage
+To run a query use:
+```
+hive -f hive_scripts/<query_script>.hive
+```
+
 ##Copyright Information
 Datix was developed as part of my Diploma Thesis at the National Technical University of Athens.
 
