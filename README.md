@@ -30,6 +30,7 @@ Datix contributes the following:
 To run a query use:
 ```
 hive -f hive_scripts/<query_script>.hive
+shark -f hive_scripts/<query_script>.hive
 ```
 
 ##Copyright Information
