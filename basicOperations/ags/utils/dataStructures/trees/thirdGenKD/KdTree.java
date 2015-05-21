@@ -3,7 +3,8 @@ package ags.utils.dataStructures.trees.thirdGenKD;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 
 /**
@@ -103,6 +104,9 @@ public class KdTree<T> extends KdNode<T> {
     	System.out.println();*/
     	return find1(point);
     }
+     public double[][] findBounds(int id) {
+    	 return findBounds1(id);
+     }
     
 	public void printTree(BufferedWriter writer) throws IOException {
 		writer.write(this.dimensions+" "+this.bucketCapacity+"\n");

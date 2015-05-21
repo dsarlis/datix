@@ -6,10 +6,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.StringTokenizer;
 
-import javax.swing.plaf.SliderUI;
 
 /**
  *
@@ -129,6 +130,33 @@ class KdNode<T> {
 		return cursor.id;
 	}
 	
+	public double[][] findBounds1(int id) {
+		KdNode<T> cursor = this;
+		
+		if (cursor.isLeaf() && cursor.id == id) {
+			double[][] bounds = new double[2][];
+			bounds[0] = cursor.minBound1;
+			bounds[1] = cursor.maxBound1;
+			
+			return bounds;
+		}
+		
+		if (cursor.isLeaf())
+			return null;
+		
+		double[][] l=null,r=null;
+		if (cursor.left != null)
+				l =left.findBounds1(id);
+		if (cursor.right != null) {
+				r= right.findBounds1(id);
+		}
+		
+		if(l != null)
+			return l;
+		else
+			return r;
+	}
+
     public void addPoint(double[] point, T value) {
         KdNode<T> cursor = this;
         while (!cursor.isLeaf()) {
