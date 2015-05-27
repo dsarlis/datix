@@ -3,6 +3,7 @@ package ags.utils.dataStructures.trees.thirdGenKD;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -10,11 +11,10 @@ import java.util.List;
 import java.util.StringTokenizer;
 
 
-/**
- *
- */
-class KdNode<T> {
-    // All types
+class KdNode<T> implements Serializable {
+
+	private static final long serialVersionUID = -1475019628722077172L;
+	// All types
     protected int dimensions;
     protected int bucketCapacity;
     protected int size;

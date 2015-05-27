@@ -9,6 +9,8 @@ import java.io.IOException;
  *
  */
 public class KdTree<T> extends KdNode<T> {
+	private static final long serialVersionUID = -4403464702046042517L;
+	
     public KdTree(int dimensions) {
         this(dimensions, 24);
     }

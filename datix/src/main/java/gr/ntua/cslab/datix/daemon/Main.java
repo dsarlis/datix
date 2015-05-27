@@ -6,11 +6,9 @@ import gr.ntua.cslab.datix.daemon.shared.ServerStaticComponents;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.locks.ReentrantLock;
@@ -141,8 +139,7 @@ public class Main {
 
     }
     
-    @SuppressWarnings("unchecked")
-	private static void initialize() throws IOException, ClassNotFoundException {
+    private static void initialize() throws IOException, ClassNotFoundException {
     	ServerStaticComponents.setTableName("sflows_with_tree_partitioned");
     	ServerStaticComponents.setSlaves(new String[]{"slave1", "slave1", "slave2", "slave3", "slave4", "slave5", "slave6", "slave7", "slave8",
     																						  "slave9", "slave10", "slave11", "slave12", "slave13", "slave14" });
@@ -163,9 +160,11 @@ public class Main {
     	else {
     		BufferedReader br = new BufferedReader(new FileReader(ServerStaticComponents.getKdTreeFile()));
     		KDtreeCache.setKd(new KdTree<Long>(br));
-    		ObjectInputStream s = new ObjectInputStream(new FileInputStream(ServerStaticComponents.getMappingFile()));
-    		MappingCache.setFileMapping((HashMap<String, String>) s.readObject());
-    		s.close();
+//    		ObjectInputStream s = new ObjectInputStream(new FileInputStream(ServerStaticComponents.getMappingFile()));
+//    		MappingCache.setFileMapping((HashMap<String, String>) s.readObject());
+//    		s.close();
+    		MappingCache.setFileMapping(new HashMap <String, String>());
+    		MappingCache.updateMapping("1", "slave1");
     	}
     }
 

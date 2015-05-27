@@ -26,6 +26,7 @@ import javax.ws.rs.core.MediaType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.KeeperException;
 
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -33,11 +34,12 @@ import com.sun.jersey.api.client.WebResource;
 
 import gr.ntua.cslab.datix.daemon.cache.*;
 import gr.ntua.cslab.datix.daemon.shared.ServerStaticComponents;
+import gr.ntua.cslab.datix.daemon.zookeeper.WriteFiles;
 
 @Path("/kdtree/")
 public class KDtree {
 
-    public Logger logger = Logger.getLogger(KDtree.class);
+    public static Logger logger = Logger.getLogger(KDtree.class);
     
     public Map<String,String> executeCommand(String[] command) throws IOException, InterruptedException {
 		String c="Executing command: ";
@@ -76,6 +78,66 @@ public class KDtree {
     public synchronized String createKDTree() throws IOException, Exception {
     	
     	return "Created KDtree";
+    }
+    
+    @Path("test/")
+    @POST
+    @Consumes({MediaType.APPLICATION_XML})
+    public static String test(String input) throws IOException, KeeperException, InterruptedException, ClassNotFoundException {
+    	
+    	/*String[] parts = input.split(" ");
+		String[] ipFrom = parts[0].split("\\.");
+		String[] ipTo = parts[2].split("\\.");
+		 
+		if (ipFrom.length > 1 && ipTo.length > 1) {
+			double[] point = new double[KDtreeCache.getDimensions().length];
+			 
+			for (int i = 0; i < KDtreeCache.getDimensions().length; i++) {
+				switch (Integer.parseInt(KDtreeCache.getDimensions()[i])) {
+		            case 1:  point[i] = Double.parseDouble(parts[1]);
+		                     break;
+		            case 3:  point[i] = Double.parseDouble(parts[3]);
+		                     break;
+		            case 8:  SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+							 try {
+							 	Date dateStr = formatter.parse(parts[8]);
+							 	point[i] = (double) dateStr.getTime();
+							 } catch (ParseException e) {
+							 	logger.error("Failed: Date not in compatible format. Example: 2015-02-18");
+								e.printStackTrace();
+							 }
+		                     break;
+		                     
+		            default: logger.error("Dimension number " + Integer.parseInt(KDtreeCache.getDimensions()[i]));
+		            		 break;
+		        }
+			 }
+			double[] idz = KDtreeCache.getKd().addPoint(point, (long) 100);
+			BufferedWriter writer = new BufferedWriter(new FileWriter(ServerStaticComponents.getKdTreeFile()));
+			KDtreeCache.getKd().printTree(writer);
+			//if a split has been performed: 
+			if ((int) idz[0] != -1) {
+				
+			}
+			logger.info("Kd Tree updated. No split performed!");
+			return "KDtree changed. No split performed!\n";
+		}
+		// should never reach this point
+    	return "Kd Tree not changed!\n";
+    	*/
+    	
+    	if (input.equals("1")) {
+    		WriteFiles wf = new WriteFiles("master:2181", "/datix");
+    		wf.write();
+    		return "Kd Tree written to Zookeeper\n";
+    	}
+    	else {
+    		WriteFiles wf = new WriteFiles("master:2181", "/datix");
+    			//Thread.sleep(50000);
+    		wf.read();
+    		logger.info("Kd Tree read from Zookeeper");
+    		return "Kd Tree read from Zookeeper\n";
+    	}
     }
     
     @Path("update/")

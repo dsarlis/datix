@@ -4,6 +4,7 @@ import gr.ntua.cslab.datixSlave.beans.SflowsList;
 import gr.ntua.cslab.datixSlave.daemon.Main;
 import gr.ntua.cslab.datixSlave.daemon.cache.*;
 import gr.ntua.cslab.datixSlave.daemon.shared.SlaveStaticComponents;
+import gr.ntua.cslab.datixSlave.daemon.threads.ReadZookeeper;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -133,29 +134,17 @@ public class Main {
         }));
 
     }
-
-    /*private static void creatDirs() {
-        File treeDir = new File("/tmp/kdtree/");
-
-        if (!treeDir.exists()) {
-            treeDir.mkdir();
-        }
-    }*/
     
     private static void initialize() throws IOException {
     	
-//    	KDtreeCache.setKd(new KdTree<Long>(KDtreeCache.getDimensions().length, KDtreeCache.getBucketSize()));
     	SFlowsCache.setSflowsToStore(new HashMap<String, SflowsList>());
     	SFlowsCache.setCachedSflows(new HashMap<String, SflowsList>());
     	SlaveStaticComponents.setTableName("sflows_with_tree_partitioned");
     	SlaveStaticComponents.setKdTreeFile("/opt/kdtree/tree_partition_3D");
     	SlaveStaticComponents.setMappingFile("/opt/mapping/mappingFile");
-//    	MappingCache.setFileMapping(new HashMap <String, String>());
     	SlaveStaticComponents.setLock(new ReentrantLock());
     	SlaveStaticComponents.setStoreLock(new ReentrantLock());
     	SlaveStaticComponents.setLocked(false);
-//    	SlaveStaticComponents.setLimitForCachedSflows(limitForCachedSflows);
-//    	SlaveStaticComponents.setLimitForSflowsToStore(limitForSflowsToStore);
     	
     	File treeDir = new File("/opt/kdtree/");
     	File mappingDir = new File("/opt/mapping/");
@@ -170,20 +159,19 @@ public class Main {
     	else {
     		BufferedReader br = new BufferedReader(new FileReader(SlaveStaticComponents.getKdTreeFile()));
     		KDtreeCache.setKd(new KdTree<Long>(br));
-//    		MappingCache.setFileMapping(fileMapping);
     	}
     }
 
     public static void main(String[] args) throws Exception {
         configureLogger();
         loadProperties();
-//     creatDirs();
         addShutdownHook();
         configureServer();
         initialize();
 
         server.start();
         Logger.getLogger(Main.class.getName()).info("Server is started");
-
+        Thread rz = new Thread(new ReadZookeeper());
+        rz.start();
     }
 }
