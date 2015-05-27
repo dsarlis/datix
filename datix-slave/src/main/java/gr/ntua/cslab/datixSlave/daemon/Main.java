@@ -4,7 +4,7 @@ import gr.ntua.cslab.datixSlave.beans.SflowsList;
 import gr.ntua.cslab.datixSlave.daemon.Main;
 import gr.ntua.cslab.datixSlave.daemon.cache.*;
 import gr.ntua.cslab.datixSlave.daemon.shared.SlaveStaticComponents;
-import gr.ntua.cslab.datixSlave.daemon.threads.ReadZookeeper;
+import gr.ntua.cslab.datixSlave.daemon.threads.ZookeeperThread;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -171,7 +171,9 @@ public class Main {
 
         server.start();
         Logger.getLogger(Main.class.getName()).info("Server is started");
-        Thread rz = new Thread(new ReadZookeeper());
+        Thread rz = new Thread(new ZookeeperThread("master:2181", "/datix"));
         rz.start();
+        Thread isAlive = new Thread(new ZookeeperThread("master:2181", "/live"));
+        isAlive.start();
     }
 }

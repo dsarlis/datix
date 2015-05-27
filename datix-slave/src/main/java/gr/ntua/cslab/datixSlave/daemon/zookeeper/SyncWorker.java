@@ -10,6 +10,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.List;
 
@@ -21,10 +23,11 @@ import org.apache.zookeeper.data.Stat;
 
 import ags.utils.dataStructures.trees.thirdGenKD.KdTree;
 
-public class Read extends SyncPrimitive {
-	public static Logger logger = Logger.getLogger(Read.class);
+public class SyncWorker extends SyncPrimitive {
+	public static Logger logger = Logger.getLogger(SyncWorker.class);
+	public static boolean isAlive = false;
 	
-	public Read (String address, String root) {
+	public SyncWorker (String address, String root) {
         super(address);
         this.root = root;
 
@@ -36,16 +39,36 @@ public class Read extends SyncPrimitive {
                             CreateMode.PERSISTENT);
                 }
             } catch (KeeperException e) {
-                logger.info("Keeper exception when instantiating Datix: "
+                logger.error("Keeper exception when instantiating Datix: "
                                 + e.toString());
             } catch (InterruptedException e) {
-                logger.info("Interrupted exception");
+                logger.error("Interrupted exception");
             }
         }
 	}
 	
+	public boolean write() {
+		Stat s = null;
+		String name;
+		try {
+			name = new String(InetAddress.getLocalHost().getCanonicalHostName().toString());
+			s = zk.exists(root, false);
+			if (s != null)
+				zk.create(root + "/" + name, new byte[0], Ids.OPEN_ACL_UNSAFE, 
+	        			CreateMode.EPHEMERAL);
+			return true;
+		} catch (UnknownHostException e) {
+			logger.error(e.toString());
+		} catch (KeeperException e) {
+			logger.error(e.toString());
+		} catch (InterruptedException e) {
+			logger.error(e.toString());
+		}
+		return false;
+	}
+	
 	@SuppressWarnings("unchecked")
-	public void read() throws InterruptedException, IOException, ClassNotFoundException {
+	public void read() {
 		Stat stat = null;
 		
 		while (true) {
@@ -82,10 +105,47 @@ public class Read extends SyncPrimitive {
                 		return;
                 	}
             	} catch (KeeperException e) {
-            		logger.info("Keeper exception when trying to read data "
+            		logger.error("Keeper exception when trying to read data "
             				+ "from Zookeeper: " + e.toString());
-            	}
+            	} catch (InterruptedException e) {
+            		logger.error("Interrupted exception when trying to read data "
+            				+ "from Zookeeper: " + e.toString());
+				} catch (IOException e) {
+            		logger.error("IO exception when trying to read data "
+            				+ "from Zookeeper: " + e.toString());
+				} catch (ClassNotFoundException e) {
+            		logger.error(e.toString());
+				}
             }
         }
     }
+	
+	public void isAlive() {
+		
+		while (true) {
+			synchronized(mutex) {
+				try {
+					List<String> list = zk.getChildren(root, true);
+					if (!isAlive) {
+						if (list.size() == 3) {
+							isAlive = true;
+							logger.info("Everyone is up. Going to wait...");
+							mutex.wait();
+						}
+						else {
+							logger.info("Some workers are down");
+						}
+					}
+					else {
+						logger.info("Everyone is up. Going to wait...");
+						mutex.wait();
+					}
+				} catch (KeeperException e) {
+					
+				} catch (InterruptedException e) {
+					
+				}
+			}
+		}
+	}
 }

@@ -34,10 +34,10 @@ public class WriteFiles extends SyncPrimitive {
                             CreateMode.PERSISTENT);
                 }
             } catch (KeeperException e) {
-                logger.info("Keeper exception when instantiating Datix: "
+                logger.error("Keeper exception when instantiating Datix: "
                                 + e.toString());
             } catch (InterruptedException e) {
-                logger.info("Interrupted exception");
+                logger.error("Interrupted exception");
             }
         }
 	}
@@ -74,13 +74,13 @@ public class WriteFiles extends SyncPrimitive {
 	        return true;
 	        
 		} catch (KeeperException e) {
-			logger.info("Keeper exception when writing data to "
+			logger.error("Keeper exception when writing data to "
 					+ "Zookeeper: " + e.toString());
 		} catch (InterruptedException e) {
-			logger.info("Interrupted exception when writing data "
+			logger.error("Interrupted exception when writing data "
 					+ "to Zookeeper: " + e.toString());
 		} catch (IOException e) {
-			logger.info("IO exception when trying to read Kd Tree "
+			logger.error("IO exception when trying to read Kd Tree "
 					+ "and Mapping File: " + e.toString());
 		}
 		return false;
