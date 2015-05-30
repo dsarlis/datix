@@ -31,7 +31,8 @@ public class GetDnsWithTimestamp  extends UDF {
 	private HashMap<String, HashMap<String, String>> DnsMap;
 	private final String TABLE_NAME = "rdns_2";
 	
-	private void fillMap(int partNum, String tree_partition, String uniqueIP, int dimensions) throws IOException, ParseException {
+	private void fillMap(int partNum, String tree_partition, String uniqueIP, int dimensions) 
+			throws IOException, ParseException {
 		DnsMap = new HashMap <String, HashMap<String, String>>();
         
         FileSystem fs = FileSystem.get(new Configuration());
@@ -78,9 +79,15 @@ public class GetDnsWithTimestamp  extends UDF {
 		Date stopDate = new Date((long) stopDateDouble);
         String startDateStr = new SimpleDateFormat("yyyy-MM-dd").format(startDate);
         String[] parts = startDateStr.split("-");
+     // if it's on the first days of the dataset fix month
+        if (parts[0].equals("1970"))
+        	parts[1] = "07";
         startDateStr = parts[0]+"-" + parts[1] + "-" + "01";
         String stopDateStr = new SimpleDateFormat("yyyy-MM-dd").format(stopDate);
         parts = stopDateStr.split("-");
+     // if it's on the last days of the dataset fix month 
+        if (parts[0].length() > 4)
+        	parts[1] = "02";
         stopDateStr = parts[0]+"-" + parts[1] + "-" + "31";
         
         
@@ -163,7 +170,8 @@ public class GetDnsWithTimestamp  extends UDF {
         table.close();
 	}
 	
-	public String evaluate(int partNum, String tree_partition, String uniqueIP, int dimensions, String dateIn, String ip) throws HiveException, IOException, ParseException {
+	public String evaluate(int partNum, String tree_partition, String uniqueIP, int dimensions, 
+			String dateIn, String ip) throws HiveException, IOException, ParseException {
         if (DnsMap == null) {
             fillMap(partNum, tree_partition, uniqueIP, dimensions);
         }
@@ -197,7 +205,8 @@ public class GetDnsWithTimestamp  extends UDF {
         return DnsMap.get(ip).get(month);
     }
 	
-	public String evaluate(int partNum, String tree_partition, String uniqueIP, int dimensions, String dateIn, String ipFrom, String ipTo) throws HiveException, IOException, ParseException {
+	public String evaluate(int partNum, String tree_partition, String uniqueIP, int dimensions, 
+			String dateIn, String ipFrom, String ipTo) throws HiveException, IOException, ParseException {
         if (DnsMap == null) {
             fillMap(partNum, tree_partition, uniqueIP, dimensions);
         }
