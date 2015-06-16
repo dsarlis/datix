@@ -11,8 +11,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.List;
 
@@ -25,7 +23,7 @@ import org.apache.zookeeper.data.Stat;
 import ags.utils.dataStructures.trees.thirdGenKD.KdTree;
 
 public class SyncWorker extends SyncPrimitive {
-	public static Logger logger = Logger.getLogger(SyncWorker.class);
+	private static final Logger logger = Logger.getLogger(SyncWorker.class);
 	public static boolean isAlive = false;
 	
 	public SyncWorker (String address, String root) {
@@ -149,17 +147,18 @@ public class SyncWorker extends SyncPrimitive {
         }
     }
 	
-	public boolean update() {
-		read(false);
+	public boolean update(int id) {
 		// update KDtreeCache, MappingCache, LeafPointsCache
-		int id = 100;
+		read(false);
 		double[] splitResult = KDtreeCache.getKd().performSplit(id);
 		if ((int) splitResult[0] != -1) {
 			//TODO load balance partitions among workers
 			MappingCache.updateMapping("" + (int)splitResult[1], "worker1", ""+(int) splitResult[2], "worker2");
+			// update zookeeper views
+			return write();
 		}
-		// update zookeeper views
-		return write();
+		else
+			return false;
 	}
 	
 	public void isAlive() {	

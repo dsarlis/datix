@@ -154,7 +154,7 @@ public class KdNode<T> implements Serializable {
 		return cursor.id;
 	}
 	
-    public void addPoint(int id, double[] point, T value) {
+    /*public void addPoint(int id, double[] point, T value) {
         KdNode<T> cursor = this;
         if (cursor.isLeaf()) {
         	if (cursor.id == id) {
@@ -168,7 +168,7 @@ public class KdNode<T> implements Serializable {
 		if (cursor.right != null) {
 				right.addPoint(id, point, value);
 		}
-    }
+    }*/
 
     /* -------- INTERNAL OPERATIONS -------- */
 

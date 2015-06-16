@@ -8,44 +8,43 @@ import java.util.Map;
 
 public class SFlowsCache {
 		//caches sflows before writing them to HDFS
-		private static Map<String, SflowsList> sflowsToStore ;
+		private static Map<Integer, SflowsList> sflowsToStore ;
 		
 		//caches sflows before sending them to appropriate worker node
-		private static Map<String, SflowsList> cachedSflows;
+		private static Map<Integer, SflowsList> cachedSflows;
 
-		public static synchronized Map<String, SflowsList> getSflowsToStore() {
+		public static synchronized Map<Integer, SflowsList> getSflowsToStore() {
 			return sflowsToStore;
 		}
 		
-		public static synchronized void setSflowsToStore(Map<String, SflowsList> sflowsToStore) {
+		public static synchronized void setSflowsToStore(Map<Integer, SflowsList> sflowsToStore) {
 			SFlowsCache.sflowsToStore = sflowsToStore;
 		}
 
-		public static synchronized Map<String, SflowsList> getCachedSflows() {
+		public static synchronized Map<Integer, SflowsList> getCachedSflows() {
 			return cachedSflows;
 		}
 		
-		public static synchronized void setCachedSflows(Map<String, SflowsList> cachedSflows) {
+		public static synchronized void setCachedSflows(Map<Integer, SflowsList> cachedSflows) {
 			SFlowsCache.cachedSflows = cachedSflows;
 		}
 		
-		public static synchronized void updateSflowsToStore(String key, SflowsList newList) {
+		public static synchronized void updateSflowsToStore(int key, String value) {
 			SflowsList sflowsList = SFlowsCache.sflowsToStore.get(key);
 			if (sflowsList == null) {
-				SFlowsCache.sflowsToStore.put(key, newList);
+				SFlowsCache.sflowsToStore.put(key, new SflowsList(
+						new ArrayList<String>(Arrays.asList(value))));
 			}
 			else {
-				for (String value : newList.getSflowsList()) {
 					sflowsList.updateList(value);
-				}
 			}
 		}
 		
-		public static synchronized void deleteKeyFromSflowsToStore(String key) {
+		public static synchronized void deleteKeyFromSflowsToStore(int key) {
 			SFlowsCache.sflowsToStore.remove(key);
 		}
 		
-		public static synchronized void updateCachedSflows(String key, String value) {
+		public static synchronized void updateCachedSflows(int key, String value) {
 			SflowsList sflowsList = SFlowsCache.cachedSflows.get(key);
 			if (sflowsList == null) {
 				SFlowsCache.cachedSflows.put(key, new SflowsList(new ArrayList<String>(Arrays.asList(value))));
@@ -60,7 +59,7 @@ public class SFlowsCache {
 			int min = Integer.MAX_VALUE;
 			int curr = Integer.MIN_VALUE;
 			
-			for (String key : SFlowsCache.sflowsToStore.keySet()) {
+			for (int key : SFlowsCache.sflowsToStore.keySet()) {
 			    curr = SFlowsCache.sflowsToStore.get(key).getSflowsList().size();
 				if (curr < min) {
 					min = curr; 
@@ -78,7 +77,7 @@ public class SFlowsCache {
 			int min = Integer.MAX_VALUE;
 			int curr = Integer.MIN_VALUE;
 			
-			for (String key : SFlowsCache.cachedSflows.keySet()) {
+			for (int key : SFlowsCache.cachedSflows.keySet()) {
 			    curr = SFlowsCache.cachedSflows.get(key).getSflowsList().size();
 				if (curr < min) {
 					min = curr; 
