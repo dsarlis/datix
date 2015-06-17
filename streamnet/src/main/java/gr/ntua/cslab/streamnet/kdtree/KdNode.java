@@ -1,4 +1,4 @@
-package ags.utils.dataStructures.trees.thirdGenKD;
+package gr.ntua.cslab.streamnet.kdtree;
 
 import gr.ntua.cslab.streamnet.cache.LeafPointsCache;
 

@@ -1,10 +1,9 @@
 package gr.ntua.cslab.streamnet;
 
+import gr.ntua.cslab.streamnet.bolts.ExclamationBolt;
 import gr.ntua.cslab.streamnet.bolts.SFlowBolt;
-import gr.ntua.cslab.streamnet.kafka.KafkaProducer;
 
 import java.io.InputStream;
-import java.util.concurrent.CountDownLatch;
 import java.util.logging.Logger;
 
 import org.apache.log4j.PropertyConfigurator;
@@ -24,10 +23,7 @@ import backtype.storm.utils.Utils;
 
 public class Main {
 	
-	static CountDownLatch topologyStartedLatch = new CountDownLatch(1);
-	
 	private static final String TOPIC_NAME = "sflows";
-    private static KafkaProducer kafkaProducer;
 	
 	private static void configureLogger() {
         SLF4JBridgeHandler.removeHandlersForRootLogger();
@@ -39,22 +35,19 @@ public class Main {
 	
 	public static void main(String[] args) throws Exception {
         configureLogger();
-        
-        kafkaProducer = new  KafkaProducer(TOPIC_NAME, topologyStartedLatch, "localhost:9092", "tmp/file");
-        kafkaProducer.startKafkaServer();
-        kafkaProducer.createTopic(TOPIC_NAME, "1", "1");
 
         // create and start Storm Topology
-        BrokerHosts brokerHosts = new ZkHosts("master:2181");
+        BrokerHosts brokerHosts = new ZkHosts("localhost:2181");
 
         SpoutConfig kafkaConfig = new SpoutConfig(brokerHosts, TOPIC_NAME, "", "storm");
         kafkaConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
         
         TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout("word", new KafkaSpout(kafkaConfig), 10);
-        builder.setBolt("worker1", new SFlowBolt("worker1", "sflows_with_tree_partitioned"), 3).shuffleGrouping("word");
-        builder.setBolt("worker1", new SFlowBolt("worker2", ""), 2).shuffleGrouping("exclaim1");
+        builder.setSpout("words", new KafkaSpout(kafkaConfig), 3);
+//        builder.setBolt("worker1", new SFlowBolt("worker1", "sflows_with_tree_partitioned"), 3).shuffleGrouping("word");
+//        builder.setBolt("worker1", new SFlowBolt("worker2", ""), 2).shuffleGrouping("exclaim1");
+        builder.setBolt("exclaim", new ExclamationBolt(), 2).shuffleGrouping("words");
 
         Config conf = new Config();
         conf.setDebug(true);

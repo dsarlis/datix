@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# This is the init script for the Kafka Client daemon.
+# When deployed, it should be placed under /etc/init.d/
+# to be executed as a service.
+
+[ -z "$KAFKA_CLIENT_HOME" ] && KAFKA_CLIENT_HOME="/opt/streamnet/"
+
+LIB_DIR=$KAFKA_CLIENT_HOME/lib
+CONF_DIR=$KAFKA_CLIENT_HOME/conf
+
+
+CLASSPATH=$CONF_DIR
+CLASSPATH=$CLASSPATH:$(echo $LIB_DIR/*.jar | tr ' ' ':')
+CLASSPATH=$CLASSPATH:$KAFKA_CLIENT_HOME/StreamNet.jar
+PIDFILE=/tmp/kafka-client.pid
+
+start() {
+    [ -f $PIDFILE ] && echo "Kafka Client already running ($(cat $PIDFILE))" && exit 0
+    java -Dname=kafkaClient -cp $CLASSPATH  gr.ntua.cslab.streamnet.KafkaClient &
+    echo $! > $PIDFILE;
+}
+
+stop() {
+    PID=$(cat $PIDFILE 2>/dev/null)
+    [ "$PID" == "" ] && echo "Kafka Client not running" && exit 0
+    kill -TERM $PID
+    rm -f $PIDFILE 
+}
+
+status() {
+    if [ -f $PIDFILE ]; then
+        PID=$(cat $PIDFILE)
+        echo "Kafka Client running ($PID)"
+    else
+        echo "Kafka Client not running"
+    fi
+}
+
+case $1 in
+    start)
+        start;
+    ;;
+    stop)   
+        stop;
+    ;;
+    restart)    
+        stop && start;
+    ;;
+    status)   
+        status;
+    ;;
+    *)      
+        echo "$0 {start|stop|status|restart}"
+    ;;
+esac

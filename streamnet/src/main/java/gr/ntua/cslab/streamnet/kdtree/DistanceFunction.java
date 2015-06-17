@@ -1,4 +1,4 @@
-package ags.utils.dataStructures.trees.thirdGenKD;
+package gr.ntua.cslab.streamnet.kdtree;
 
 public interface DistanceFunction {
     public double distance(double[] p1, double[] p2);

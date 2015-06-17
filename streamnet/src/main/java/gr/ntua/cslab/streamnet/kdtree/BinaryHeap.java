@@ -1,4 +1,4 @@
-package ags.utils.dataStructures.trees.thirdGenKD;
+package gr.ntua.cslab.streamnet.kdtree;
 
 import java.util.Arrays;
 

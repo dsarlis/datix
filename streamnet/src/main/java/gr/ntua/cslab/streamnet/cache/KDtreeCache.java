@@ -1,6 +1,6 @@
 package gr.ntua.cslab.streamnet.cache;
 
-import ags.utils.dataStructures.trees.thirdGenKD.KdTree;
+import gr.ntua.cslab.streamnet.kdtree.KdTree;
 
 public class KDtreeCache {
 	    //kdtree used by services
