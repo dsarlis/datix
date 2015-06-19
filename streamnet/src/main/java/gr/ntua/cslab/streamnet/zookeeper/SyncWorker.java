@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.logging.Logger;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -29,6 +30,7 @@ import org.apache.zookeeper.data.Stat;
 public class SyncWorker extends SyncPrimitive {
 	public static boolean isAlive = false;
 	private final String TABLE_NAME;
+	private static final Logger LOG = Logger.getLogger(SyncWorker.class.getName());
 	
 	public SyncWorker (String address, String root, String tableName) {
         super(address);
@@ -56,7 +58,7 @@ public class SyncWorker extends SyncPrimitive {
 		for (int i = 0; i < command.length; i++) {
 			c+=command[i]+" ";
 		}
-		System.out.println(c);
+		LOG.info(c);
 		
 		StringBuffer output = new StringBuffer();
 		ProcessBuilder p = new ProcessBuilder(command);
@@ -70,7 +72,7 @@ public class SyncWorker extends SyncPrimitive {
 		while ((line = reader.readLine())!= null) {
 			output.append(line + "\n");
 		}
-        System.out.println("Command Output: "+output.toString());
+        LOG.info("Command Output: "+output.toString());
         ret.put("output", output.toString());
 		reader = new BufferedReader(new InputStreamReader(p1.getErrorStream()));
 		line = "";	
@@ -78,13 +80,13 @@ public class SyncWorker extends SyncPrimitive {
 		while ((line = reader.readLine())!= null) {
 			output.append(line + "\n");
 		}
-        System.out.println("Command Error: "+output.toString());
+        LOG.info("Command Error: "+output.toString());
         ret.put("error", output.toString());
 		return ret;
  
 	}
 	
-	private boolean write() {
+	public boolean write() {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
         ObjectOutputStream o;
 		try {
@@ -107,10 +109,10 @@ public class SyncWorker extends SyncPrimitive {
 	        }
 	        zk.create(root + "/kdtree", kdtree, Ids.OPEN_ACL_UNSAFE, 
 	        			CreateMode.PERSISTENT);
-	        System.out.println("K-d Tree written to Zookeeper");
+	        LOG.info("K-d Tree written to Zookeeper");
 	        zk.create(root + "/mapping", mapping, Ids.OPEN_ACL_UNSAFE, 
 	    			CreateMode.PERSISTENT);
-	        System.out.println("Mapping File written to Zookeeper");
+	        LOG.info("Mapping File written to Zookeeper");
 	        
 	        return true;
 		} catch (KeeperException e) {
@@ -140,7 +142,7 @@ public class SyncWorker extends SyncPrimitive {
                 						false, stat);
                 			if (!blocking)
                 				zk.delete(root + "/kdtree", 0);
-                			System.out.println("K-d Tree read from Zookeeper");
+                			LOG.info("K-d Tree read from Zookeeper");
                 			ObjectInputStream o = new ObjectInputStream(
                 					new ByteArrayInputStream(b));
                 			KdTree<Long> newKd = (KdTree<Long>) o.readObject();
@@ -155,7 +157,7 @@ public class SyncWorker extends SyncPrimitive {
                 			b = zk.getData(root + "/mapping", false, stat);
                 			if (!blocking)
                 				zk.delete(root + "mapping", 0);
-                			System.out.println("Mapping File read from Zookeeper");
+                			LOG.info("Mapping File read from Zookeeper");
                 			o = new ObjectInputStream(new ByteArrayInputStream(b));
                 			MappingCache.setFileMapping((HashMap<String, String>) o.readObject());
                 			ObjectOutputStream s = new ObjectOutputStream(new 
@@ -164,8 +166,12 @@ public class SyncWorker extends SyncPrimitive {
                 			o.close();
                 			s.close();
                 		}
+                		else {
+                			LOG.info("Going to wait");
+                			mutex.wait();
+                		}
                 		if (blocking) {
-                			System.out.println("Going to wait");
+                			LOG.info("Going to wait");
                 			mutex.wait();
                 		}
                 	} else {
@@ -191,6 +197,9 @@ public class SyncWorker extends SyncPrimitive {
 		// update KDtreeCache, MappingCache, LeafPointsCache
 		read(false);
 		double[] splitResult = KDtreeCache.getKd().performSplit(id);
+		LOG.info("********************");
+		LOG.info("Split Result: " + splitResult);
+		LOG.info("********************");
 		if ((int) splitResult[0] != -1) {
 			//TODO load balance partitions among workers
 			Random ran = new Random();
@@ -238,15 +247,15 @@ public class SyncWorker extends SyncPrimitive {
 					if (!isAlive) {
 						if (list.size() == 3) {
 							isAlive = true;
-							System.out.println("Everyone is up. Going to wait...");
+							LOG.info("Everyone is up. Going to wait...");
 							mutex.wait();
 						}
 						else {
-							System.out.println("Some workers are down");
+							LOG.info("Some workers are down");
 						}
 					}
 					else {
-						System.out.println("Everyone is up. Going to wait...");
+						LOG.info("Everyone is up. Going to wait...");
 						mutex.wait();
 					}
 				} catch (KeeperException e) {

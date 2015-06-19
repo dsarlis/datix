@@ -294,7 +294,7 @@ public class IntervalHeap<T> implements MinHeap<T>, MaxHeap<T> {
         return str.toString();
     }
 
-    private boolean validateHeap() {
+    /*private boolean validateHeap() {
         // Validate left-right
         for (int i = 0; i < size-1; i+= 2) {
             if (keys[i] > keys[i+1]) return false;
@@ -306,5 +306,5 @@ public class IntervalHeap<T> implements MinHeap<T>, MaxHeap<T> {
             if (keys[i] > maxParent || keys[i] < minParent) return false;
         }
         return true;
-    }
+    }*/
 }

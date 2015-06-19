@@ -6,23 +6,28 @@ import gr.ntua.cslab.streamnet.cache.KDtreeCache;
 import gr.ntua.cslab.streamnet.cache.LeafPointsCache;
 import gr.ntua.cslab.streamnet.cache.MappingCache;
 import gr.ntua.cslab.streamnet.cache.SFlowsCache;
+import gr.ntua.cslab.streamnet.kdtree.KdTree;
+import gr.ntua.cslab.streamnet.shared.StreamNetStaticComponents;
 import gr.ntua.cslab.streamnet.threads.SplitThread;
 import gr.ntua.cslab.streamnet.threads.ZkReadThread;
+import gr.ntua.cslab.streamnet.zookeeper.SyncWorker;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.log4j.Logger;
 
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
@@ -34,15 +39,15 @@ import backtype.storm.tuple.Values;
 
 public class SFlowBolt extends BaseRichBolt {
 	private static final long serialVersionUID = 1L;
-	private static final Logger LOG = Logger.getLogger(SFlowBolt.class);
+	private static final Logger LOG = Logger.getLogger(SFlowBolt.class.getName());
 	OutputCollector _collector;
 	TopologyContext _topo;
 	private String boltName;
 	private final String TABLE_NAME;
 	
-	public SFlowBolt(String boltName, String tableName) {
+	public SFlowBolt(String boltName) {
 		this.boltName = boltName;
-		this.TABLE_NAME = tableName;
+		this.TABLE_NAME = StreamNetStaticComponents.TABLE_NAME;
 	}
 	
 	private PartitionInfo getPartitionNumber(String record) {
@@ -60,11 +65,11 @@ public class SFlowBolt extends BaseRichBolt {
         				Date dateStr = formatter.parse(parts[8]);
         				point[i] = (double) dateStr.getTime();
         			} catch (ParseException e) {
-        				LOG.error("Failed: Parse Error in Date format string. Accepted format yyyy-MM-dd");
+        				LOG.info("Failed: Parse Error in Date format string. Accepted format yyyy-MM-dd");
         				e.printStackTrace();
         			}
         			break;
-        		default: LOG.error("Dimension number n");
+        		default: LOG.info("Dimension number n");
         			break;
 			}
 		}
@@ -73,8 +78,8 @@ public class SFlowBolt extends BaseRichBolt {
 	}
 	
 	@Override
-	public void execute(Tuple record) {
-		String sFlowRecord = record.getString(record.fieldIndex("record"));
+	public void execute(Tuple record)  {
+		String sFlowRecord = record.getString(0);
 		String[] parts = sFlowRecord.split(" ");
 		String[] ipFrom = parts[0].split("\\.");
 		String[] ipTo = parts[2].split("\\.");
@@ -92,7 +97,7 @@ public class SFlowBolt extends BaseRichBolt {
 				// emit direct to the correct worker
 				LOG.info("Sending record to appropriate worker");
 				// TODO if multiple threads for the same worker
-				_collector.emitDirect(l.get(0), new Values(record));
+				_collector.emitDirect(l.get(0), new Values(sFlowRecord));
 			}
 			else {
 				LeafPointsCache.addPoint(partitionId, point);
@@ -106,35 +111,45 @@ public class SFlowBolt extends BaseRichBolt {
 						
 						if (KDtreeCache.getKd().isLeaf(key)) {
 							Configuration conf = new Configuration();
+							conf.set("fs.hdfs.impl", 
+							        org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+							 conf.set("fs.file.impl",
+							        org.apache.hadoop.fs.LocalFileSystem.class.getName());
+//							LOG.info("Configuration: " + conf.toString());
 							FileSystem fs = null;
 							long length = 0;
 							try {
+//								LOG.info("Before getting Filesystem fs...");
 								fs = FileSystem.get(conf);
+//								LOG.info("----->Filesystem object: " + fs);
 								length = fs.getFileStatus(new Path("hdfs://master:9000/opt/warehouse/" 
 										+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz")).getLen();
 							} catch (IOException e1) {
-								LOG.error("Failed to get HDFS Configuration");
+								LOG.info(e1.getMessage());
 							}
-							if (length < 67108864) {
+							if (length < StreamNetStaticComponents.splitSize) {
 								// file is below block size, so just write data to it
-								try {
-									SflowsList sflowsList = SFlowsCache.getSflowsToStore().get(key);
-									//use key to open the correct file
-									Path pt = new Path("hdfs://master:9000/opt/warehouse/" 
-											+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz");
-									BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
-											new GZIPOutputStream(fs.append(pt)), "UTF-8"));
-									for (String r : sflowsList.getSflowsList()) {
-										bw.write(r);
-										bw.newLine();
-									}
-									bw.close();
-									LOG.info("Successfully written data to HDFS file");
-									//clean up SflowsToStore HashMap
-									SFlowsCache.deleteKeyFromSflowsToStore(key);
-								} catch (IOException e) {
-									LOG.error("Failed: Not able to append to HDFS file!");
-								}		
+								while (true) {
+									try {
+										SflowsList sflowsList = SFlowsCache.getSflowsToStore().get(key);
+										//use key to open the correct file
+										Path pt = new Path("hdfs://master:9000/opt/warehouse/" 
+												+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz");
+										BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
+												new GZIPOutputStream(fs.append(pt)), "UTF-8"));
+										for (String r : sflowsList.getSflowsList()) {
+											bw.write(r);
+											bw.newLine();
+										}
+										bw.close();
+										LOG.info("Successfully written data to HDFS file");
+										//clean up SflowsToStore HashMap
+										SFlowsCache.deleteKeyFromSflowsToStore(key);
+										break;
+									} catch (IOException e) {
+										LOG.info(e.getMessage());
+									}		
+								}
 							}
 							else {
 								// file exceeds block size, so we have to perform a split
@@ -151,7 +166,7 @@ public class SFlowBolt extends BaseRichBolt {
 								// emit direct to the correct worker
 								LOG.info("Sending record to appropriate worker");
 								// TODO if multiple threads for the same worker
-								_collector.emitDirect(l.get(0), new Values(record));
+								_collector.emitDirect(l.get(0), new Values(sFlowRecord1));
 							}
 						}
 					}
@@ -161,10 +176,23 @@ public class SFlowBolt extends BaseRichBolt {
 	}
 
 	@Override
-	public void prepare(Map conf, TopologyContext topo, OutputCollector collector) {
+	public void prepare(@SuppressWarnings("rawtypes") Map conf, TopologyContext topo, 
+			OutputCollector collector) {
 		_collector = collector;
 		_topo = topo;
-		Thread zkReadThread = new Thread(new ZkReadThread("master:2181", "/datix", TABLE_NAME));
+		// initialize memory caches
+		KDtreeCache.setKd(new KdTree<Long>(KDtreeCache.getDimensions().length,
+				KDtreeCache.getBucketSize()));
+		MappingCache.setFileMapping(new HashMap <String, String>());
+		MappingCache.updateMapping("1", "worker1");
+		LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
+		SFlowsCache.setSflowsToStore(new HashMap<Integer, SflowsList>());
+		if (boltName.equals("worker1")) {
+			SyncWorker sw = new SyncWorker("master:2181", "/datix", TABLE_NAME);
+			sw.write();
+		}
+		Thread zkReadThread = new Thread(new ZkReadThread("master:2181",
+				"/datix", TABLE_NAME));
 		zkReadThread.start();
 	}
 

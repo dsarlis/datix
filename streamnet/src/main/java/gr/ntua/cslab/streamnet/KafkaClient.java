@@ -14,12 +14,11 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 public class KafkaClient {
 	private static Properties props;
 	private static final String TOPIC_NAME = "sflows";
-	private static final String FILENAME = 
-			"/home/dimitris/sflow.2014-02-17_17-15-36.3600sec.pcap.gz";
+	private static String FILENAME;
 	
 	private static void loadProperties() {
 		props = new Properties();
-		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "master:9092");
 		props.put(ProducerConfig.RETRIES_CONFIG, "3");
 		props.put(ProducerConfig.ACKS_CONFIG, "all");
 		props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "none");
@@ -34,6 +33,8 @@ public class KafkaClient {
 	public static void main(String[] args) throws Exception {
 		loadProperties();
 		
+		FILENAME = args[0];
+		
 		KafkaProducer<String, String> kp = new KafkaProducer<String, String>(props);
 		
 		try {
@@ -45,7 +46,7 @@ public class KafkaClient {
 				ProducerRecord<String, String> data = 
 						new ProducerRecord<String, String>(TOPIC_NAME, 0, "0", line);
 				kp.send(data);
-				System.out.println("Sending record: " + line);
+//				System.out.println("Sending record: " + line);
 				line = br.readLine();
 			}
 			br.close();

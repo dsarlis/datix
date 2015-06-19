@@ -1,13 +1,9 @@
 package gr.ntua.cslab.streamnet;
 
-import gr.ntua.cslab.streamnet.bolts.ExclamationBolt;
 import gr.ntua.cslab.streamnet.bolts.SFlowBolt;
+import gr.ntua.cslab.streamnet.shared.StreamNetStaticComponents;
 
-import java.io.InputStream;
 import java.util.logging.Logger;
-
-import org.apache.log4j.PropertyConfigurator;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import storm.kafka.BrokerHosts;
 import storm.kafka.KafkaSpout;
@@ -25,38 +21,67 @@ public class Main {
 	
 	private static final String TOPIC_NAME = "sflows";
 	
-	private static void configureLogger() {
-        SLF4JBridgeHandler.removeHandlersForRootLogger();
-        SLF4JBridgeHandler.install();
-        InputStream logPropertiesStream = Main.class.getClassLoader().getResourceAsStream("log4j.properties");
-        PropertyConfigurator.configure(logPropertiesStream);
-        Logger.getLogger(Main.class.getName()).info("Logger configured");
-    } 
-	
 	public static void main(String[] args) throws Exception {
-        configureLogger();
-
+		
         // create and start Storm Topology
-        BrokerHosts brokerHosts = new ZkHosts("localhost:2181");
+        BrokerHosts brokerHosts = new ZkHosts("master:2181");
+        
+        StreamNetStaticComponents.TABLE_NAME = args[0];
+        StreamNetStaticComponents.splitSize = Integer.parseInt(args[3]);
 
         SpoutConfig kafkaConfig = new SpoutConfig(brokerHosts, TOPIC_NAME, "", "storm");
         kafkaConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
         
         TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout("words", new KafkaSpout(kafkaConfig), 3);
-//        builder.setBolt("worker1", new SFlowBolt("worker1", "sflows_with_tree_partitioned"), 3).shuffleGrouping("word");
-//        builder.setBolt("worker1", new SFlowBolt("worker2", ""), 2).shuffleGrouping("exclaim1");
-        builder.setBolt("exclaim", new ExclamationBolt(), 2).shuffleGrouping("words");
+        builder.setSpout("words", new KafkaSpout(kafkaConfig), 1);
+        
+        builder.setBolt("worker1", new SFlowBolt("worker1"), 1).shuffleGrouping("words")
+        	.directGrouping("worker1")
+        	.directGrouping("worker2")
+        	.directGrouping("worker3")
+        	.directGrouping("worker4")
+        	.directGrouping("worker5");
+        
+        builder.setBolt("worker2", new SFlowBolt("worker2"), 1).shuffleGrouping("words")
+    		.directGrouping("worker1")
+    		.directGrouping("worker2")
+    		.directGrouping("worker3")
+    		.directGrouping("worker4")
+    		.directGrouping("worker5");
+        
+        
+        builder.setBolt("worker3", new SFlowBolt("worker3"), 1).shuffleGrouping("words")
+    		.directGrouping("worker1")
+    		.directGrouping("worker2")
+    		.directGrouping("worker3")
+    		.directGrouping("worker4")
+    		.directGrouping("worker5");
+        
+        builder.setBolt("worker4", new SFlowBolt("worker4"), 1).shuffleGrouping("words")
+    		.directGrouping("worker1")
+    		.directGrouping("worker2")
+    		.directGrouping("worker3")
+    		.directGrouping("worker4")
+    		.directGrouping("worker5");
+        
+        builder.setBolt("worker5", new SFlowBolt("worker5"), 1).shuffleGrouping("words")
+    		.directGrouping("worker1")
+    		.directGrouping("worker2")
+    		.directGrouping("worker3")
+    		.directGrouping("worker4")
+    		.directGrouping("worker5");
+//        builder.setBolt("exclaim", new ExclamationBolt(), 2).shuffleGrouping("words");
 
         Config conf = new Config();
         conf.setDebug(true);
 
-        if (args != null && args.length > 0) {
+        if (args != null && args.length > 1) {
           // remote cluster
-          conf.setNumWorkers(3);
+          conf.setNumWorkers(Integer.parseInt(args[1]));
 
-          StormSubmitter.submitTopologyWithProgressBar(args[0], conf, builder.createTopology());
+//          System.setProperty("storm.jar", "/opt/streamnet/StreamNet.jar");
+          StormSubmitter.submitTopologyWithProgressBar(args[2], conf, builder.createTopology());
           Logger.getLogger(Main.class.getName()).info("StreamNet is Started!");
         }
         else {
