@@ -98,7 +98,7 @@ public class SyncWorker extends SyncPrimitive {
 			o.writeObject(MappingCache.getFileMapping());
 			byte[] mapping = b.toByteArray();
 				
-			Stat s = null;
+			/*Stat s = null;
 			s = zk.exists(root + "/kdtree", false);
 			if (s != null) {
 	        	zk.delete(root + "/kdtree", 0);
@@ -106,7 +106,7 @@ public class SyncWorker extends SyncPrimitive {
 	        s = zk.exists(root + "/mapping", false);
 	        if (s != null) {
 	        	zk.delete(root + "/maping", 0);
-	        }
+	        }*/
 	        zk.create(root + "/kdtree", kdtree, Ids.OPEN_ACL_UNSAFE, 
 	        			CreateMode.PERSISTENT);
 	        LOG.info("K-d Tree written to Zookeeper");
@@ -116,14 +116,11 @@ public class SyncWorker extends SyncPrimitive {
 	        
 	        return true;
 		} catch (KeeperException e) {
-			System.err.println("Keeper exception when writing data to "
-					+ "Zookeeper: " + e.toString());
+			System.err.println( e.toString());
 		} catch (InterruptedException e) {
-			System.err.println("Interrupted exception when writing data "
-					+ "to Zookeeper: " + e.toString());
+			System.err.println(e.toString());
 		} catch (IOException e) {
-			System.err.println("IO exception when trying to read Kd Tree "
-					+ "and Mapping File: " + e.toString());
+			System.err.println(e.toString());
 		}
 		return false;
 	}
@@ -142,11 +139,11 @@ public class SyncWorker extends SyncPrimitive {
                 						false, stat);
                 			if (!blocking)
                 				zk.delete(root + "/kdtree", 0);
-                			LOG.info("K-d Tree read from Zookeeper");
+                			LOG.info("K-d Tree read from Zookeeper + blocking: " + blocking);
                 			ObjectInputStream o = new ObjectInputStream(
                 					new ByteArrayInputStream(b));
                 			KdTree<Long> newKd = (KdTree<Long>) o.readObject();
-                			if (newKd.countLeafs() >= KDtreeCache.getKd().countLeafs())
+                			if (newKd.countLeafs() > KDtreeCache.getKd().countLeafs())
                 				KDtreeCache.setKd(newKd);
                 			BufferedWriter bw = new BufferedWriter(new 
                 					FileWriter("/tmp/kdtree_dup"));
@@ -156,8 +153,8 @@ public class SyncWorker extends SyncPrimitive {
                 			
                 			b = zk.getData(root + "/mapping", false, stat);
                 			if (!blocking)
-                				zk.delete(root + "mapping", 0);
-                			LOG.info("Mapping File read from Zookeeper");
+                				zk.delete(root + "/mapping", 0);
+                			LOG.info("Mapping File read from Zookeeper + blocking: " + blocking);
                 			o = new ObjectInputStream(new ByteArrayInputStream(b));
                 			MappingCache.setFileMapping((HashMap<String, String>) o.readObject());
                 			ObjectOutputStream s = new ObjectOutputStream(new 
@@ -165,13 +162,15 @@ public class SyncWorker extends SyncPrimitive {
                 			s.writeObject(MappingCache.getFileMapping());
                 			o.close();
                 			s.close();
+                			if (!blocking)
+                				break;
                 		}
                 		else {
-                			LOG.info("Going to wait");
+                			LOG.info("Going to wait because someone else is trying to write");
                 			mutex.wait();
                 		}
                 		if (blocking) {
-                			LOG.info("Going to wait");
+                			LOG.info("Going to wait for poll-reading");
                 			mutex.wait();
                 		}
                 	} else {
@@ -196,16 +195,22 @@ public class SyncWorker extends SyncPrimitive {
 	public boolean update(int id) {
 		// update KDtreeCache, MappingCache, LeafPointsCache
 		read(false);
+		LOG.info("Before K-d Tree is split!");
 		double[] splitResult = KDtreeCache.getKd().performSplit(id);
 		LOG.info("********************");
-		LOG.info("Split Result: " + splitResult);
+		LOG.info("Split Result: " + splitResult.toString());
 		LOG.info("********************");
 		if ((int) splitResult[0] != -1) {
+			LOG.info("Going to split node now!");
 			//TODO load balance partitions among workers
 			Random ran = new Random();
-			MappingCache.updateMapping("" + (int)splitResult[1], StreamNetStaticComponents.slaves[ran.nextInt(
+			/*MappingCache.updateMapping("" + (int)splitResult[1], StreamNetStaticComponents.slaves[ran.nextInt(
 					StreamNetStaticComponents.slaves.length + 1)], ""+(int) splitResult[2], 
-					StreamNetStaticComponents.slaves[ran.nextInt(StreamNetStaticComponents.slaves.length + 1)]);
+					StreamNetStaticComponents.slaves[ran.nextInt(StreamNetStaticComponents.slaves.length + 1)]);*/
+			MappingCache.updateMapping("" + (int)splitResult[1], "worker2", ""+(int) splitResult[2], "worker3");
+			for (String key: MappingCache.getFileMapping().keySet()) {
+				LOG.info("key: " + key + " worker: " + MappingCache.getFileMapping().get(key));
+			}
 			
 			// create new partitions in Hive
 			String[] addCommand = new String[] {"hive", "-e", "ALTER TABLE " + TABLE_NAME 
@@ -229,14 +234,16 @@ public class SyncWorker extends SyncPrimitive {
 			
 			// move data to new partitions
 			Thread copyThread = new Thread(new CopyThread((int)splitResult[0], 
-					(int)splitResult[1], (int) splitResult[2], splitResult[4], (int) splitResult[3], TABLE_NAME));
+					(int)splitResult[1], (int) splitResult[2], splitResult[3], (int) splitResult[4], TABLE_NAME));
 			copyThread.start();
 			
 			// update zookeeper views
 			return write();
 		}
-		else
+		else {
+			LOG.info("Something went wrong. Not performing split!!!");
 			return false;
+		}
 	}
 	
 	public void isAlive() {	

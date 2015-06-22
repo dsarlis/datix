@@ -53,7 +53,7 @@ public class KdNode<T> implements Serializable {
         this.dimensions = dimensions;
         this.bucketCapacity = bucketCapacity;
         this.size = 0;
-        this.singlePoint = true;
+        this.singlePoint = false;
         this.isLeaf = true;
 
         // Init leaf elements
@@ -74,7 +74,7 @@ public class KdNode<T> implements Serializable {
         this.dimensions = dimensions;
         this.bucketCapacity = bucketCapacity;
         this.size = 0;
-        this.singlePoint = true;
+        this.singlePoint = false;
         this.isLeaf = true;
 
         // Init leaf elements
@@ -151,21 +151,22 @@ public class KdNode<T> implements Serializable {
 		return cursor.id;
 	}
 	
-    /*public void addPoint(int id, double[] point, T value) {
+    public void addPoint(int id) {
         KdNode<T> cursor = this;
         if (cursor.isLeaf()) {
         	if (cursor.id == id) {
-        		LeafPointsCache.addPoint(id, point);
+        		System.out.println("Inside KdTree.addPoint for key: " + id + " singlePoint: " + cursor.singlePoint);
+        		cursor.singlePoint = false;
         	}
         	return;
         }
         
 		if (cursor.left != null)
-				left.addPoint(id, point, value);
+				left.addPoint(id);
 		if (cursor.right != null) {
-				right.addPoint(id, point, value);
+				right.addPoint(id);
 		}
-    }*/
+    }
 
     /* -------- INTERNAL OPERATIONS -------- */
 
@@ -174,11 +175,15 @@ public class KdNode<T> implements Serializable {
 		
 		if (cursor.isLeaf()) {
 			if (cursor.id == id) {
-				if (cursor.singlePoint) return null;
+				if (cursor.singlePoint) {
+					System.out.println("Inside KdNode.calculateSplit for key: " + id);
+					System.out.println("-------->Single Point case...");
+					return null;
+				}
 
 		        double width = 0;
 		        for (int i = 0; i < cursor.dimensions; i++) {
-		            double dwidth = (cursor.maxBound[i] - cursor.minBound[i]);
+		            double dwidth = (cursor.maxBound1[i] - cursor.minBound1[i]);
 		            if (Double.isNaN(dwidth)) dwidth = 0;
 		            if (dwidth > width) {
 		                cursor.splitDimension = i;
@@ -198,7 +203,8 @@ public class KdNode<T> implements Serializable {
 					l.add(point[cursor.splitDimension]);
 				}
 		        Collections.sort(l);
-		        cursor.splitValue = l.get(cursor.bucketCapacity/2);
+		        cursor.splitValue = l.get(l.size()/2);
+		        System.out.println("------->Splitvalue chosen: " + cursor.splitValue + " SplitDimension: " + cursor.splitDimension);
 		        
 		        
 		        // Never split on infinity or NaN
@@ -211,11 +217,12 @@ public class KdNode<T> implements Serializable {
 
 		        // Don't let the split value be the same as the upper value as
 		        // can happen due to rounding errors!
-		        if (cursor.splitValue == maxBound[cursor.splitDimension]) {
-		            cursor.splitValue = minBound[cursor.splitDimension];
+		        if (cursor.splitValue == maxBound1[cursor.splitDimension]) {
+		            cursor.splitValue = minBound1[cursor.splitDimension];
 		        }
 
 		        // Success
+		        System.out.println("Everything looks good, returning node to split");
 		        return cursor;
 			}
 			else
@@ -266,7 +273,7 @@ public class KdNode<T> implements Serializable {
 		cursor.points = null;
 		cursor.data = null;
 		cursor.isLeaf = false;
-		return new double[]{id, nextId+1, nextId, splitValue, splitDimension};
+		return new double[]{id, nextId+1, nextId, cursor.splitValue, cursor.splitDimension};
     }
     
     public void printTree(){

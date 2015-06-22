@@ -36,6 +36,8 @@ public class CopyThread implements Runnable {
 
 	@Override
 	public void run() {
+		System.out.println(oldId + " " + leftId + " " + rightId);
+		
 		Path pt = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
 				+ "/part=" + oldId + "/part-" + oldId + ".gz");
 		try {
@@ -44,22 +46,25 @@ public class CopyThread implements Runnable {
         		new InputStreamReader(new GZIPInputStream(fs.open(pt)), "UTF-8")));
         Path ptLeft = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
         		+ "/part=" + leftId + "/part-" + leftId + ".gz");
+//        fs.create(ptLeft);
     	BufferedWriter bwLeft = new BufferedWriter(new OutputStreamWriter(
-    			new GZIPOutputStream(fs.append(ptLeft))));
+    			new GZIPOutputStream(fs.create(ptLeft))));
     	Path ptRight = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
     			+ "/part=" + rightId + "/part-" + rightId + ".gz");
+//    	fs.create(ptRight);
     	BufferedWriter bwRight = new BufferedWriter(new OutputStreamWriter(
-    			new GZIPOutputStream(fs.append(ptRight))));
+    			new GZIPOutputStream(fs.create(ptRight))));
         String line;
+        System.out.println("------->Splitvalue chosen: " + splitValue + " SplitDimension: " + splitDimension);
 		while ((line = br.readLine()) != null) {
 			String[] parts1 = line.split(" ");
 			double value = 0;
 			
 			switch (splitDimension) {
-				case 1:	value = Double.parseDouble(parts1[1]);
+				case 0:	value = Double.parseDouble(parts1[1]);
 					break;
-				case 3:	value = Double.parseDouble(parts1[3]);
-				case 8:	SimpleDateFormat formatter = 
+				case 1:	value = Double.parseDouble(parts1[3]);
+				case 2:	SimpleDateFormat formatter = 
 										new SimpleDateFormat("yyyy-MM-dd");
 				 				try {
 				 						Date dateStr = formatter.parse(parts1[8]);
@@ -85,7 +90,7 @@ public class CopyThread implements Runnable {
     	bwLeft.close();
     	bwRight.close();
 		} catch (IOException e) {
-			System.err.println("Failed: Error while copying data...");
+			System.err.println(e.toString());
 		}	
 	}
 }

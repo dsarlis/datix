@@ -8,7 +8,6 @@ import gr.ntua.cslab.streamnet.cache.MappingCache;
 import gr.ntua.cslab.streamnet.cache.SFlowsCache;
 import gr.ntua.cslab.streamnet.kdtree.KdTree;
 import gr.ntua.cslab.streamnet.shared.StreamNetStaticComponents;
-import gr.ntua.cslab.streamnet.threads.SplitThread;
 import gr.ntua.cslab.streamnet.threads.ZkReadThread;
 import gr.ntua.cslab.streamnet.zookeeper.SyncWorker;
 
@@ -22,6 +21,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.logging.Logger;
 import java.util.zip.GZIPOutputStream;
 
@@ -98,9 +98,15 @@ public class SFlowBolt extends BaseRichBolt {
 				LOG.info("Sending record to appropriate worker");
 				// TODO if multiple threads for the same worker
 				_collector.emitDirect(l.get(0), new Values(sFlowRecord));
+				_collector.ack(record);
 			}
 			else {
-				LeafPointsCache.addPoint(partitionId, point);
+				Random ran = new Random();
+				if (ran.nextDouble() < 0.05) {
+					LOG.info("Added Point in Kd-Tree");
+					KDtreeCache.getKd().addPoint(partitionId);
+					LeafPointsCache.addPoint(partitionId, point);
+				}
 				SFlowsCache.updateSflowsToStore(partitionId, sFlowRecord);
 				LOG.info("Added Point in cache");
 				
@@ -124,12 +130,12 @@ public class SFlowBolt extends BaseRichBolt {
 //								LOG.info("----->Filesystem object: " + fs);
 								length = fs.getFileStatus(new Path("hdfs://master:9000/opt/warehouse/" 
 										+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz")).getLen();
+//								LOG.info("------>File Length: " + length);
 							} catch (IOException e1) {
 								LOG.info(e1.getMessage());
 							}
-							if (length < StreamNetStaticComponents.splitSize) {
+							if (length < 1000000) {
 								// file is below block size, so just write data to it
-								while (true) {
 									try {
 										SflowsList sflowsList = SFlowsCache.getSflowsToStore().get(key);
 										//use key to open the correct file
@@ -145,16 +151,17 @@ public class SFlowBolt extends BaseRichBolt {
 										LOG.info("Successfully written data to HDFS file");
 										//clean up SflowsToStore HashMap
 										SFlowsCache.deleteKeyFromSflowsToStore(key);
-										break;
 									} catch (IOException e) {
 										LOG.info(e.getMessage());
 									}		
-								}
 							}
 							else {
 								// file exceeds block size, so we have to perform a split
-								Thread splitThread = new Thread(new SplitThread("master:2181", "/datix", key, TABLE_NAME));
-								splitThread.start();
+								SyncWorker sw = new SyncWorker("master:2181", "/datix", TABLE_NAME);
+								LOG.info("Performing a split in Kd-Tree");
+								sw.update(key);
+//								Thread splitThread = new Thread(new SplitThread("master:2181", "/datix", key, TABLE_NAME));
+//								splitThread.start();
 							}
 						}
 						else {
@@ -167,6 +174,7 @@ public class SFlowBolt extends BaseRichBolt {
 								LOG.info("Sending record to appropriate worker");
 								// TODO if multiple threads for the same worker
 								_collector.emitDirect(l.get(0), new Values(sFlowRecord1));
+								 _collector.ack(record);
 							}
 						}
 					}
