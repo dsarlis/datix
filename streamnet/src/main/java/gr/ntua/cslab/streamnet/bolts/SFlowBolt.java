@@ -112,6 +112,7 @@ public class SFlowBolt extends BaseRichBolt {
 				
 				// check if SFlowsCache is full
 				// if so, write data to HDFS
+				ArrayList<Integer> keysRemoved = new ArrayList<Integer>();
 				if (SFlowsCache.fullSflowsToStore()) {
 					for (int key : SFlowsCache.getSflowsToStore().keySet()) {
 						
@@ -121,21 +122,18 @@ public class SFlowBolt extends BaseRichBolt {
 							        org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
 							 conf.set("fs.file.impl",
 							        org.apache.hadoop.fs.LocalFileSystem.class.getName());
-//							LOG.info("Configuration: " + conf.toString());
 							FileSystem fs = null;
 							long length = 0;
 							try {
-//								LOG.info("Before getting Filesystem fs...");
 								fs = FileSystem.get(conf);
-//								LOG.info("----->Filesystem object: " + fs);
 								length = fs.getFileStatus(new Path("hdfs://master:9000/opt/warehouse/" 
 										+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz")).getLen();
-//								LOG.info("------>File Length: " + length);
 							} catch (IOException e1) {
 								LOG.info(e1.getMessage());
 							}
-							if (length < 1000000) {
+							if (length < 500000) {
 								// file is below block size, so just write data to it
+								while (true) {
 									try {
 										SflowsList sflowsList = SFlowsCache.getSflowsToStore().get(key);
 										//use key to open the correct file
@@ -150,14 +148,16 @@ public class SFlowBolt extends BaseRichBolt {
 										bw.close();
 										LOG.info("Successfully written data to HDFS file");
 										//clean up SflowsToStore HashMap
-										SFlowsCache.deleteKeyFromSflowsToStore(key);
+										keysRemoved.add(key);
+										break;
 									} catch (IOException e) {
 										LOG.info(e.getMessage());
 									}		
+								}
 							}
 							else {
 								// file exceeds block size, so we have to perform a split
-								SyncWorker sw = new SyncWorker("master:2181", "/datix", TABLE_NAME);
+								SyncWorker sw = new SyncWorker("master:2181", "/datix", TABLE_NAME, boltName);
 								LOG.info("Performing a split in Kd-Tree");
 								sw.update(key);
 //								Thread splitThread = new Thread(new SplitThread("master:2181", "/datix", key, TABLE_NAME));
@@ -175,10 +175,12 @@ public class SFlowBolt extends BaseRichBolt {
 								// TODO if multiple threads for the same worker
 								_collector.emitDirect(l.get(0), new Values(sFlowRecord1));
 								 _collector.ack(record);
+								 keysRemoved.add(key);
 							}
 						}
 					}
 				}
+				SFlowsCache.cleanSflowToStore(keysRemoved);
 			}
 		}
 	}
@@ -196,11 +198,11 @@ public class SFlowBolt extends BaseRichBolt {
 		LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
 		SFlowsCache.setSflowsToStore(new HashMap<Integer, SflowsList>());
 		if (boltName.equals("worker1")) {
-			SyncWorker sw = new SyncWorker("master:2181", "/datix", TABLE_NAME);
-			sw.write();
+			SyncWorker sw = new SyncWorker("master:2181", "/datix", TABLE_NAME, boltName);
+			sw.write(null);
 		}
 		Thread zkReadThread = new Thread(new ZkReadThread("master:2181",
-				"/datix", TABLE_NAME));
+				"/datix", TABLE_NAME, boltName));
 		zkReadThread.start();
 	}
 

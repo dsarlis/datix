@@ -176,8 +176,8 @@ public class KdNode<T> implements Serializable {
 		if (cursor.isLeaf()) {
 			if (cursor.id == id) {
 				if (cursor.singlePoint) {
-					System.out.println("Inside KdNode.calculateSplit for key: " + id);
-					System.out.println("-------->Single Point case...");
+//					System.out.println("Inside KdNode.calculateSplit for key: " + id);
+//					System.out.println("-------->Single Point case...");
 					return null;
 				}
 
@@ -204,7 +204,7 @@ public class KdNode<T> implements Serializable {
 				}
 		        Collections.sort(l);
 		        cursor.splitValue = l.get(l.size()/2);
-		        System.out.println("------->Splitvalue chosen: " + cursor.splitValue + " SplitDimension: " + cursor.splitDimension);
+//		        System.out.println("------->Splitvalue chosen: " + cursor.splitValue + " SplitDimension: " + cursor.splitDimension);
 		        
 		        
 		        // Never split on infinity or NaN
@@ -222,7 +222,7 @@ public class KdNode<T> implements Serializable {
 		        }
 
 		        // Success
-		        System.out.println("Everything looks good, returning node to split");
+//		        System.out.println("Everything looks good, returning node to split");
 		        return cursor;
 			}
 			else
@@ -244,7 +244,7 @@ public class KdNode<T> implements Serializable {
     public double[] splitLeafNode(KdNode<T> cursor) {
 		
 		int nextLevelStart = (int)Math.pow(2, cursor.level+1);
-		int thisLevelOffset = id - (int)Math.pow(2, cursor.level);
+		int thisLevelOffset = cursor.id - (int)Math.pow(2, cursor.level);
 		int nextId= nextLevelStart + thisLevelOffset*2;
 		double[] minBoundsNext1 = new double[cursor.dimensions];
 		double[] maxBoundsNext1 = new double[cursor.dimensions];
@@ -268,12 +268,12 @@ public class KdNode<T> implements Serializable {
 		cursor.right.maxBound1=maxBoundsNext2;
 
 		// Move locations into children
-		LeafPointsCache.splitPoints(id, nextId+1, nextId, cursor.splitDimension, cursor.splitValue);
+//		LeafPointsCache.splitPoints(id, nextId+1, nextId, cursor.splitDimension, cursor.splitValue);
 
 		cursor.points = null;
 		cursor.data = null;
 		cursor.isLeaf = false;
-		return new double[]{id, nextId+1, nextId, cursor.splitValue, cursor.splitDimension};
+		return new double[]{cursor.id, nextId+1, nextId, cursor.splitValue, cursor.splitDimension};
     }
     
     public void printTree(){

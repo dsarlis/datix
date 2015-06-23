@@ -33,8 +33,9 @@ public class LeafPointsCache {
 	
 	public static synchronized void splitPoints(int id, int idLeft, int idRight, 
 			int splitDimension, double splitValue) {
-		ArrayList<double[]> prevPoints = LeafPointsCache.points.get(id);
-		for (double[] point : prevPoints) {
+//		System.out.println("Requesting ids: " + id + " " + idLeft + " " + idRight + " keyset: " + points.keySet());
+		ArrayList<double[]> prevPoints = LeafPointsCache.getPoints().get(id);
+		for (double[] point: prevPoints) {
 			if (point[splitDimension] > splitValue) {
 				LeafPointsCache.addPoint(idRight, point);
 			}

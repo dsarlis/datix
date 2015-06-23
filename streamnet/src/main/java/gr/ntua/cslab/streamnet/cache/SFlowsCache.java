@@ -40,8 +40,10 @@ public class SFlowsCache {
 			}
 		}
 		
-		public static synchronized void deleteKeyFromSflowsToStore(int key) {
-			SFlowsCache.sflowsToStore.remove(key);
+		public static synchronized void cleanSflowToStore(ArrayList<Integer> keysRemoved) {
+			for (int key: keysRemoved) {
+				SFlowsCache.sflowsToStore.remove(key);
+			}
 		}
 		
 		public static synchronized void updateCachedSflows(int key, String value) {
