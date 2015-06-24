@@ -18,7 +18,7 @@ public class ZkReadThread implements Runnable {
 	@Override
 	public void run() {
 		
-		SyncWorker sw = new SyncWorker(zkHosts, root, tableName, boltName);
+		SyncWorker sw = new SyncWorker(zkHosts, 2000000, root, tableName, boltName);
 		if (root.equals("/datix")) {
 			System.out.println("Started reading K-d Tree and Mapping File into memory...");
 			sw.blockingRead();

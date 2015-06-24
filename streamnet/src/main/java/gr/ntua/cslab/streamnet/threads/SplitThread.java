@@ -20,7 +20,7 @@ public class SplitThread implements Runnable {
 	
 	@Override
 	public void run() {
-		SyncWorker sw = new SyncWorker(zkHosts, root, 
+		SyncWorker sw = new SyncWorker(zkHosts, 3000, root, 
 				tableName, boltName);
 		if (root.equals("/datix")) {
 			System.out.println("Performing a split in Kd-Tree");

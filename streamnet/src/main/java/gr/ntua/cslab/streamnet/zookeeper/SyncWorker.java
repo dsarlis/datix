@@ -15,22 +15,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStreamWriter;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.logging.Logger;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
@@ -42,8 +33,8 @@ public class SyncWorker extends SyncPrimitive {
 	private final String BOLT_NAME;
 	private static final Logger LOG = Logger.getLogger(SyncWorker.class.getName());
 	
-	public SyncWorker (String address, String root, String tableName, String boltName) {
-        super(address);
+	public SyncWorker (String address, int timeout, String root, String tableName, String boltName) {
+        super(address, timeout);
         this.root = root;
         TABLE_NAME = tableName;
         BOLT_NAME = boltName;
@@ -139,12 +130,13 @@ public class SyncWorker extends SyncPrimitive {
 	        LOG.info("Mapping File written to Zookeeper");
 	        zk.create(root + "/points", points, Ids.OPEN_ACL_UNSAFE,
 	        		CreateMode.PERSISTENT);
-	        LOG.info("Points FIle written to Zookeeper");
+	        LOG.info("Points File written to Zookeeper");
 	        zk.create(root + "/kdtree", kdtree, Ids.OPEN_ACL_UNSAFE, 
         			CreateMode.PERSISTENT);
 	        LOG.info("K-d Tree written to Zookeeper");
 	        zk.create("/lock", new byte[0], Ids.OPEN_ACL_UNSAFE,
 	        		CreateMode.PERSISTENT);
+	        LOG.info("Lock File written to Zookeeper");
 	        
 	        return true;
 		} catch (KeeperException e) {
@@ -170,6 +162,7 @@ public class SyncWorker extends SyncPrimitive {
                 			zk.delete("/lock", 0);
                 			byte[] b = zk.getData(root + "/mapping", false, stat);
                 			ObjectInputStream o = new ObjectInputStream(new ByteArrayInputStream(b));
+                			LOG.info("Mapping File read from Zookeeper");
                 			HashMap<String, String> newMapping = (HashMap<String, String>) o.readObject();
                 			BufferedWriter bw = new BufferedWriter(new 
                 					FileWriter("/tmp/mapping_dup_from_zookeeper"));
@@ -234,7 +227,6 @@ public class SyncWorker extends SyncPrimitive {
                 			KDtreeCache.getKd().printTree(bw);
                 			o.close();
                 			bw.close();
-//                			s.close();
                 			break;
                 		}
                 		else {

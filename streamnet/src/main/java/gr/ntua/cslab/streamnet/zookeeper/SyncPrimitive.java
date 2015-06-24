@@ -14,11 +14,11 @@ public class SyncPrimitive implements Watcher {
 
     public String root;
 
-    public SyncPrimitive(String address) {
+    public SyncPrimitive(String address, int timeout) {
         if(zk == null){
             try {
                 System.out.println("Starting ZK:");
-                zk = new ZooKeeper(address, 3000, this);
+                zk = new ZooKeeper(address, timeout, this);
                 mutex = new Integer(-1);
                 dead = false;
                 System.out.println("Finished starting ZK: " + zk);

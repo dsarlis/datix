@@ -34,16 +34,22 @@ public class Main {
         
         TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout("words", new KafkaSpout(kafkaConfig), 1);
+        builder.setSpout("words1", new KafkaSpout(kafkaConfig), 1);
+        builder.setSpout("words2", new KafkaSpout(kafkaConfig), 1);
+        builder.setSpout("words3", new KafkaSpout(kafkaConfig), 1);
         
-        builder.setBolt("worker1", new SFlowBolt("worker1"), 1).shuffleGrouping("words")
+        builder.setBolt("worker1", new SFlowBolt("worker1"), 1).shuffleGrouping("words1")
+        	.shuffleGrouping("words2")
+        	.shuffleGrouping("words3")
         	.directGrouping("worker1")
         	.directGrouping("worker2")
         	.directGrouping("worker3")
         	.directGrouping("worker4")
         	.directGrouping("worker5");
         
-        builder.setBolt("worker2", new SFlowBolt("worker2"), 1).shuffleGrouping("words")
+        builder.setBolt("worker2", new SFlowBolt("worker2"), 1).shuffleGrouping("words1")
+        	.shuffleGrouping("words2")
+        	.shuffleGrouping("words3")
     		.directGrouping("worker1")
     		.directGrouping("worker2")
     		.directGrouping("worker3")
@@ -51,21 +57,27 @@ public class Main {
     		.directGrouping("worker5");
         
         
-        builder.setBolt("worker3", new SFlowBolt("worker3"), 1).shuffleGrouping("words")
+        builder.setBolt("worker3", new SFlowBolt("worker3"), 1).shuffleGrouping("words1")
+        	.shuffleGrouping("words2")
+        	.shuffleGrouping("words3")
     		.directGrouping("worker1")
     		.directGrouping("worker2")
     		.directGrouping("worker3")
     		.directGrouping("worker4")
     		.directGrouping("worker5");
         
-        builder.setBolt("worker4", new SFlowBolt("worker4"), 1).shuffleGrouping("words")
+        builder.setBolt("worker4", new SFlowBolt("worker4"), 1).shuffleGrouping("words1")
+        	.shuffleGrouping("words2")
+        	.shuffleGrouping("words3")
     		.directGrouping("worker1")
     		.directGrouping("worker2")
     		.directGrouping("worker3")
     		.directGrouping("worker4")
     		.directGrouping("worker5");
         
-        builder.setBolt("worker5", new SFlowBolt("worker5"), 1).shuffleGrouping("words")
+        builder.setBolt("worker5", new SFlowBolt("worker5"), 1).shuffleGrouping("words1")
+        	.shuffleGrouping("words2")
+        	.shuffleGrouping("words3")
     		.directGrouping("worker1")
     		.directGrouping("worker2")
     		.directGrouping("worker3")

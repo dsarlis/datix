@@ -19,6 +19,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -113,9 +114,10 @@ public class SFlowBolt extends BaseRichBolt {
 				// check if SFlowsCache is full
 				// if so, write data to HDFS
 				ArrayList<Integer> keysRemoved = new ArrayList<Integer>();
+				Iterator<Integer> keySet = SFlowsCache.getSflowsToStore().keySet().iterator();
 				if (SFlowsCache.fullSflowsToStore()) {
-					for (int key : SFlowsCache.getSflowsToStore().keySet()) {
-						
+					while (keySet.hasNext()) {
+						int key = keySet.next();
 						if (KDtreeCache.getKd().isLeaf(key)) {
 							Configuration conf = new Configuration();
 							conf.set("fs.hdfs.impl", 
@@ -157,7 +159,7 @@ public class SFlowBolt extends BaseRichBolt {
 							}
 							else {
 								// file exceeds block size, so we have to perform a split
-								SyncWorker sw = new SyncWorker("master:2181", "/datix", TABLE_NAME, boltName);
+								SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", TABLE_NAME, boltName);
 								LOG.info("Performing a split in Kd-Tree");
 								sw.update(key);
 //								Thread splitThread = new Thread(new SplitThread("master:2181", "/datix", key, TABLE_NAME));
@@ -198,7 +200,7 @@ public class SFlowBolt extends BaseRichBolt {
 		LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
 		SFlowsCache.setSflowsToStore(new HashMap<Integer, SflowsList>());
 		if (boltName.equals("worker1")) {
-			SyncWorker sw = new SyncWorker("master:2181", "/datix", TABLE_NAME, boltName);
+			SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", TABLE_NAME, boltName);
 			sw.write(null);
 		}
 		Thread zkReadThread = new Thread(new ZkReadThread("master:2181",
