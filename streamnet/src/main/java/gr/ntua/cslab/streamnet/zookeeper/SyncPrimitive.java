@@ -51,7 +51,7 @@ public class SyncPrimitive implements Watcher {
             		break;
             } 	
         } else {
-            if (path != null && path.equals(root)) {
+            if (path != null && (path.equals(root) || path.equals("/lock"))) {
             	// The node has changed, so wake up workers
             	synchronized(mutex) {
             		mutex.notify();

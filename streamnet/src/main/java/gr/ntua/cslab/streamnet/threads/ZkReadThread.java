@@ -1,6 +1,6 @@
 package gr.ntua.cslab.streamnet.threads;
 
-import gr.ntua.cslab.streamnet.zookeeper.SyncWorker;
+import gr.ntua.cslab.streamnet.zookeeper.BlockingRead;
 
 public class ZkReadThread implements Runnable {
 	private String zkHosts;
@@ -18,10 +18,10 @@ public class ZkReadThread implements Runnable {
 	@Override
 	public void run() {
 		
-		SyncWorker sw = new SyncWorker(zkHosts, 2000000, root, tableName, boltName);
+		BlockingRead br = new BlockingRead(zkHosts, 2000000, root, boltName);
 		if (root.equals("/datix")) {
 			System.out.println("Started reading K-d Tree and Mapping File into memory...");
-			sw.blockingRead();
+			br.blockingRead();
 		}
 	}
 }

@@ -80,6 +80,7 @@ public class SFlowBolt extends BaseRichBolt {
 	
 	@Override
 	public void execute(Tuple record)  {
+		LOG.info("Processing record...");
 		String sFlowRecord = record.getString(0);
 		String[] parts = sFlowRecord.split(" ");
 		String[] ipFrom = parts[0].split("\\.");
@@ -97,9 +98,8 @@ public class SFlowBolt extends BaseRichBolt {
 				List<Integer> l = _topo.getComponentTasks(worker);
 				// emit direct to the correct worker
 				LOG.info("Sending record to appropriate worker");
-				// TODO if multiple threads for the same worker
-				_collector.emitDirect(l.get(0), new Values(sFlowRecord));
-				_collector.ack(record);
+				_collector.emitDirect(partitionId % l.size(), new Values(sFlowRecord));
+//				_collector.ack(record);
 			}
 			else {
 				Random ran = new Random();
@@ -176,7 +176,7 @@ public class SFlowBolt extends BaseRichBolt {
 								LOG.info("Sending record to appropriate worker");
 								// TODO if multiple threads for the same worker
 								_collector.emitDirect(l.get(0), new Values(sFlowRecord1));
-								 _collector.ack(record);
+//								 _collector.ack(record);
 								 keysRemoved.add(key);
 							}
 						}
@@ -201,7 +201,8 @@ public class SFlowBolt extends BaseRichBolt {
 		SFlowsCache.setSflowsToStore(new HashMap<Integer, SflowsList>());
 		if (boltName.equals("worker1")) {
 			SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", TABLE_NAME, boltName);
-			sw.write(null);
+			if (!sw.exists())
+				sw.write(null);
 		}
 		Thread zkReadThread = new Thread(new ZkReadThread("master:2181",
 				"/datix", TABLE_NAME, boltName));

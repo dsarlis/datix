@@ -15,13 +15,22 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStreamWriter;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
@@ -44,6 +53,11 @@ public class SyncWorker extends SyncPrimitive {
                 Stat s = zk.exists(root, false);
                 if (s == null) {
                     zk.create(root, new byte[0], Ids.OPEN_ACL_UNSAFE,
+                            CreateMode.PERSISTENT);
+                }
+                s = zk.exists("/lock", false);
+                if (s == null) {
+                	zk.create("/lock", new byte[0], Ids.OPEN_ACL_UNSAFE,
                             CreateMode.PERSISTENT);
                 }
             } catch (KeeperException e) {
@@ -86,6 +100,19 @@ public class SyncWorker extends SyncPrimitive {
         ret.put("error", output.toString());
 		return ret;
  
+	}
+	
+	public boolean exists() {
+		try {
+			if (zk.exists(root + "/kdtree", false) != null || zk.exists("/lock/writeLock", false) != null
+					|| zk.exists(root + "/mapping", false) != null || zk.exists(root + "/points", false) != null) 
+					return true;
+		} catch (KeeperException e) {
+			LOG.info(e.toString());
+		} catch (InterruptedException e) {
+			LOG.info(e.toString());
+		}
+		return false;
 	}
 	
 	public boolean write(HashMap<Integer, ArrayList<double[]>> newPoints) {
@@ -134,7 +161,7 @@ public class SyncWorker extends SyncPrimitive {
 	        zk.create(root + "/kdtree", kdtree, Ids.OPEN_ACL_UNSAFE, 
         			CreateMode.PERSISTENT);
 	        LOG.info("K-d Tree written to Zookeeper");
-	        zk.create("/lock", new byte[0], Ids.OPEN_ACL_UNSAFE,
+	        zk.create("/lock" + "/writeLock", new byte[0], Ids.OPEN_ACL_UNSAFE,
 	        		CreateMode.PERSISTENT);
 	        LOG.info("Lock File written to Zookeeper");
 	        
@@ -156,25 +183,25 @@ public class SyncWorker extends SyncPrimitive {
 		while (true) {
             synchronized (mutex) {
             	try {
-//            		List<String> list = zk.getChildren(root, true);
                 	if (!dead) {
-                		if (zk.exists("/lock", true) != null) {
-                			zk.delete("/lock", 0);
+                		List<String> list = zk.getChildren("/lock", true);
+                		if (list.size() == 1) {
+                			zk.delete("/lock" + "/writeLock", 0);
                 			byte[] b = zk.getData(root + "/mapping", false, stat);
                 			ObjectInputStream o = new ObjectInputStream(new ByteArrayInputStream(b));
                 			LOG.info("Mapping File read from Zookeeper");
                 			HashMap<String, String> newMapping = (HashMap<String, String>) o.readObject();
-                			BufferedWriter bw = new BufferedWriter(new 
+                			/*BufferedWriter bw = new BufferedWriter(new 
                 					FileWriter("/tmp/mapping_dup_from_zookeeper"));
                 			for (String key: MappingCache.getFileMapping().keySet()) {
                 				bw.write("key: " + key + " value: " + newMapping.get(key));
                 				bw.newLine();
                 			}
                 			o.close();
-                			bw.close();
+                			bw.close();*/
                 			if (newMapping.keySet().size() > MappingCache.getFileMapping().keySet().size())
                 				MappingCache.setFileMapping(newMapping);
-                			bw = new BufferedWriter(new FileWriter("/tmp/mapping_dup"));
+                			BufferedWriter bw = new BufferedWriter(new FileWriter("/tmp/mapping_dup"));
                 			for (String key: MappingCache.getFileMapping().keySet()) {
                 				bw.write("key: " + key + " value: " + MappingCache.getFileMapping().get(key));
                 				bw.newLine();
@@ -227,7 +254,7 @@ public class SyncWorker extends SyncPrimitive {
                 			KDtreeCache.getKd().printTree(bw);
                 			o.close();
                 			bw.close();
-                			break;
+                			return;
                 		}
                 		else {
                 			LOG.info("Going to wait because someone else is trying to write");
@@ -396,11 +423,11 @@ public class SyncWorker extends SyncPrimitive {
 			}
 			
 			// move data to new partitions
-			Thread copyThread = new Thread(new CopyThread((int)splitResult[0], 
+			/*Thread copyThread = new Thread(new CopyThread((int)splitResult[0], 
 					(int)splitResult[1], (int) splitResult[2], splitResult[3], (int) splitResult[4], TABLE_NAME));
-			copyThread.start();
+			copyThread.start();*/
 			
-			/*Path pt = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
+			Path pt = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
 					+ "/part=" + oldId + "/part-" + oldId + ".gz");
 			try {
 	        FileSystem fs = FileSystem.get(new Configuration());
@@ -415,7 +442,6 @@ public class SyncWorker extends SyncPrimitive {
 	    	BufferedWriter bwRight = new BufferedWriter(new OutputStreamWriter(
 	    			new GZIPOutputStream(fs.create(ptRight))));
 	        String line;
-	        System.out.println("------->Splitvalue chosen: " + splitValue + " SplitDimension: " + splitDimension);
 			while ((line = br.readLine()) != null) {
 				String[] parts1 = line.split(" ");
 				double value = 0;
@@ -451,7 +477,7 @@ public class SyncWorker extends SyncPrimitive {
 	    	bwRight.close();
 			} catch (IOException e) {
 				System.err.println(e.toString());
-			}*/
+			}
 			
 			// update zookeeper views
 			this.write(newPoints);

@@ -42,12 +42,16 @@ public class KafkaClient {
 	        		new GZIPInputStream(new FileInputStream(FILENAME)), "UTF-8"));
 			String line;
 			line = br.readLine();
+			int id = 0;
 			while (line != null) {
 				ProducerRecord<String, String> data = 
-						new ProducerRecord<String, String>(TOPIC_NAME, 0, "0", line);
+						new ProducerRecord<String, String>(TOPIC_NAME, id, ""+id, line);
 				kp.send(data);
 //				System.out.println("Sending record: " + line);
 				line = br.readLine();
+				id++;
+				if (id > 3)
+					id = 0;
 			}
 			br.close();
 		    kp.close();
