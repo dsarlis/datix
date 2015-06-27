@@ -34,7 +34,7 @@ public class Main {
         
         TopologyBuilder builder = new TopologyBuilder();
         int spoutPar = 1;
-        int boltPar = 4;
+        int boltPar = Integer.parseInt(args[4]);
 
         builder.setSpout("words1", new KafkaSpout(kafkaConfig), spoutPar);
         builder.setSpout("words2", new KafkaSpout(kafkaConfig), spoutPar);
@@ -149,12 +149,14 @@ public class Main {
         
         Config conf = new Config();
         conf.setDebug(true);
-//        conf.put(Config.TOPOLOGY_MAX_SPOUT_PENDING, 1000);
-        conf.put(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS, 60);
 
         if (args != null && args.length > 1) {
           // remote cluster
           conf.setNumWorkers(Integer.parseInt(args[1]));
+          conf.put(Config.TOPOLOGY_MAX_SPOUT_PENDING, Integer.parseInt(args[5]));
+          conf.put(Config.TOPOLOGY_EXECUTOR_RECEIVE_BUFFER_SIZE, Integer.parseInt(args[6]));
+          conf.put(Config.TOPOLOGY_EXECUTOR_SEND_BUFFER_SIZE, Integer.parseInt(args[7]));
+          conf.put(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS, Integer.parseInt(args[8]));
           StormSubmitter.submitTopologyWithProgressBar(args[2], conf, builder.createTopology());
           Logger.getLogger(Main.class.getName()).info("StreamNet is Started!");
         }

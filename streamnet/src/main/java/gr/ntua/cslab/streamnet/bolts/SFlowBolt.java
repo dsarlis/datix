@@ -98,8 +98,8 @@ public class SFlowBolt extends BaseRichBolt {
 				List<Integer> l = _topo.getComponentTasks(worker);
 				// emit direct to the correct worker
 				LOG.info("Sending record to appropriate worker");
-				_collector.emitDirect(partitionId % l.size(), new Values(sFlowRecord));
-//				_collector.ack(record);
+				_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord));
+				_collector.ack(record);
 			}
 			else {
 				Random ran = new Random();
@@ -174,9 +174,8 @@ public class SFlowBolt extends BaseRichBolt {
 								List<Integer> l = _topo.getComponentTasks(worker1);
 								// emit direct to the correct worker
 								LOG.info("Sending record to appropriate worker");
-								// TODO if multiple threads for the same worker
-								_collector.emitDirect(l.get(0), new Values(sFlowRecord1));
-//								 _collector.ack(record);
+								_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord1));
+								 _collector.ack(record);
 								 keysRemoved.add(key);
 							}
 						}
@@ -192,20 +191,24 @@ public class SFlowBolt extends BaseRichBolt {
 			OutputCollector collector) {
 		_collector = collector;
 		_topo = topo;
+		int waitTime = 0;
 		// initialize memory caches
-		KDtreeCache.setKd(new KdTree<Long>(KDtreeCache.getDimensions().length,
-				KDtreeCache.getBucketSize()));
-		MappingCache.setFileMapping(new HashMap <String, String>());
-		MappingCache.updateMapping("1", "worker1");
-		LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
+		SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", TABLE_NAME, boltName);
+		if (!sw.exists()) {
+			KDtreeCache.setKd(new KdTree<Long>(KDtreeCache.getDimensions().length,
+					KDtreeCache.getBucketSize()));
+			MappingCache.setFileMapping(new HashMap <String, String>());
+			MappingCache.updateMapping("1", "worker1");
+			LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
+			waitTime = 5000;
+		}
 		SFlowsCache.setSflowsToStore(new HashMap<Integer, SflowsList>());
 		if (boltName.equals("worker1")) {
-			SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", TABLE_NAME, boltName);
 			if (!sw.exists())
-				sw.write(null);
+				sw.writeState(null);
 		}
 		Thread zkReadThread = new Thread(new ZkReadThread("master:2181",
-				"/datix", TABLE_NAME, boltName));
+				"/datix", boltName, waitTime));
 		zkReadThread.start();
 	}
 
