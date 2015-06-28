@@ -1,17 +1,22 @@
 package gr.ntua.cslab.streamnet.threads;
 
-import gr.ntua.cslab.streamnet.zookeeper.BlockingRead;
+import gr.ntua.cslab.streamnet.zookeeper.SyncWorker;
 
 public class ZkReadThread implements Runnable {
 	private String zkHosts;
-	private String root;
+	private String stateRoot;
+	private String lockRoot;
+	private String tableName;
 	private String boltName;
 	private int waitTime;
 	
-	public ZkReadThread(String zkHosts, String root, String boltName, int waitTime) {
+	public ZkReadThread(String zkHosts, String stateRoot, String lockRoot, 
+			String tableName, String boltName, int waitTime) {
 		this.zkHosts = zkHosts;
-		this.root = root;
+		this.stateRoot = stateRoot;
+		this.lockRoot = lockRoot;
 		this.boltName = boltName;
+		this.tableName = tableName;
 		this.waitTime = waitTime;
 	}
 	
@@ -25,11 +30,9 @@ public class ZkReadThread implements Runnable {
 				System.out.println(e.toString());
 			}
 		}
-		BlockingRead br = new BlockingRead(zkHosts, 2000000, root, boltName);
-		if (root.equals("/datix")) {
-			System.out.println("Started reading K-d Tree and Mapping File into memory...");
-			br.blockingRead();
-		}
+		SyncWorker sw = new SyncWorker(zkHosts, 2000000, stateRoot, lockRoot, tableName, boltName);
+		System.out.println("Started reading K-d Tree and Mapping File into memory...");
+		sw.blockingStateRead();
 	}
 }
 

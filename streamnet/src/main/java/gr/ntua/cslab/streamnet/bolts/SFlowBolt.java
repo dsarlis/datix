@@ -93,15 +93,20 @@ public class SFlowBolt extends BaseRichBolt {
 			
 			String worker = MappingCache.getFileMapping().get("" + partitionId);
 			
+			List<Integer> myList = _topo.getComponentTasks(boltName);
+			LOG.info("List of IDs: " + myList.toString());
 			// if record belongs to another worker send it there
-			if (!worker.equals(boltName)) {
+			if ( !worker.equals(boltName) || myList.get(partitionId % myList.size()) != _topo.getThisTaskId() ) {
 				List<Integer> l = _topo.getComponentTasks(worker);
 				// emit direct to the correct worker
+				LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId());
 				LOG.info("Sending record to appropriate worker");
 				_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord));
 				_collector.ack(record);
 			}
 			else {
+				LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId() +
+						" pos in list: " + myList.get(partitionId % myList.size()));
 				Random ran = new Random();
 				if (ran.nextDouble() < 0.05) {
 					LOG.info("Added Point in Kd-Tree");
@@ -159,7 +164,7 @@ public class SFlowBolt extends BaseRichBolt {
 							}
 							else {
 								// file exceeds block size, so we have to perform a split
-								SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", TABLE_NAME, boltName);
+								SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", "/lock", TABLE_NAME, boltName);
 								LOG.info("Performing a split in Kd-Tree");
 								sw.update(key);
 //								Thread splitThread = new Thread(new SplitThread("master:2181", "/datix", key, TABLE_NAME));
@@ -191,24 +196,28 @@ public class SFlowBolt extends BaseRichBolt {
 			OutputCollector collector) {
 		_collector = collector;
 		_topo = topo;
-		int waitTime = 0;
+		int waitTime = 10000;
 		// initialize memory caches
-		SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", TABLE_NAME, boltName);
+		SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", 
+				"/lock", TABLE_NAME, boltName);
 		if (!sw.exists()) {
 			KDtreeCache.setKd(new KdTree<Long>(KDtreeCache.getDimensions().length,
 					KDtreeCache.getBucketSize()));
 			MappingCache.setFileMapping(new HashMap <String, String>());
 			MappingCache.updateMapping("1", "worker1");
 			LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
-			waitTime = 5000;
+			if (boltName.equals("worker1")) {
+				if (_topo.getThisTaskId() == _topo.getComponentTasks(boltName).get(0)) {
+					sw.writeState(null);
+				}
+			}
+		}
+		else {
+			sw.getState();
 		}
 		SFlowsCache.setSflowsToStore(new HashMap<Integer, SflowsList>());
-		if (boltName.equals("worker1")) {
-			if (!sw.exists())
-				sw.writeState(null);
-		}
 		Thread zkReadThread = new Thread(new ZkReadThread("master:2181",
-				"/datix", boltName, waitTime));
+				"/datix", "/lock", TABLE_NAME, boltName, waitTime));
 		zkReadThread.start();
 	}
 

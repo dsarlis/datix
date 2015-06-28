@@ -33,7 +33,8 @@ public class SyncPrimitive implements Watcher {
     protected final String BOLT_NAME;
     private static final Logger LOG = Logger.getLogger(SyncPrimitive.class.getName());
 
-    public String root;
+    public String stateRoot;
+    public String lockRoot;
 
     public SyncPrimitive(String address, int timeout, String boltName) {
     	this.address = address;
@@ -57,7 +58,7 @@ public class SyncPrimitive implements Watcher {
     synchronized public void getState() {
     	Stat stat = null;
     	try {
-    		List<String> list = zk.getChildren(root, true);
+    		List<String> list = zk.getChildren(stateRoot, true);
     		Collections.sort(list);
     		String last = list.get(list.size()-1);
 		
@@ -66,8 +67,7 @@ public class SyncPrimitive implements Watcher {
 		
     		//wait for all files to exist
     			
-    		byte[] b = zk.getData(root + "/" + last, false, stat);
-    		//byte[] b = zk.getData(root + "/" + last + "/mapping", false, stat);
+    		byte[] b = zk.getData(stateRoot + "/" + last, false, stat);
     		LOG.info("Mapping File read from Zookeeper");
     		ObjectInputStream o = new ObjectInputStream(new ByteArrayInputStream(b));
     		State state = (State) o.readObject();
@@ -82,10 +82,7 @@ public class SyncPrimitive implements Watcher {
     		}
     		bw.close();
 			
-//    		b = zk.getData(root + "/" + last + "/points" , false, stat);
     		LOG.info("Points File read from Zookeeper");
-//    		if (b != null) {
-//    			o = new ObjectInputStream(new ByteArrayInputStream(b));
     		HashMap<Integer, ArrayList<double[]>> newPoints = 
 				(HashMap<Integer, ArrayList<double[]>>) state.getPoints();
     		if (newPoints != null) {
@@ -110,20 +107,15 @@ public class SyncPrimitive implements Watcher {
     					bw.newLine();
     				}
     			}
-//    			o.close();
     			bw.close();
     		}
 			
-//    		b = zk.getData(root + "/" + last + "/kdtree" ,
-//						false, stat);
     		LOG.info("K-d Tree read from Zookeeper");
-//    		o = new ObjectInputStream(new ByteArrayInputStream(b));
     		KdTree<Long> newKd = state.getKd();
     		if (KDtreeCache.getKd() == null || newKd.countLeafs() > KDtreeCache.getKd().countLeafs())
     			KDtreeCache.setKd(newKd);
     		bw = new BufferedWriter(new FileWriter("/tmp/kdtree_dup"));
     		KDtreeCache.getKd().printTree(bw);
-//    		o.close();
     		bw.close();
     	} catch (KeeperException e) {
     		System.err.println("Keeper exception when trying to read data "
@@ -153,20 +145,20 @@ public class SyncPrimitive implements Watcher {
             		break;
             	case Expired:
             		// It's all over
-				try {
-					mutex.notifyAll();
-					zk = new ZooKeeper(address, timeout, this);
-					mutex = new Integer(-1);
-	                dead = false;
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+            		try {
+            			mutex.notifyAll();
+            			zk = new ZooKeeper(address, timeout, this);
+            			mutex = new Integer(-1);
+            			dead = false;
+            		} catch (IOException e) {
+            			e.printStackTrace();
+            		}
             		break;
             	default:
             		break;
             } 	
         } else {
-            if (path != null && (path.equals(root) || path.equals("/lock"))) {
+            if (path != null && (path.equals(stateRoot) || path.equals(lockRoot))) {
             	// The node has changed, so wake up workers
             	synchronized(mutex) {
             		mutex.notify();

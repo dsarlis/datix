@@ -8,7 +8,7 @@ public class BlockingRead extends SyncPrimitive {
 	
 	public BlockingRead (String address, int timeout, String root, String boltName) {
         super(address, timeout, boltName);
-        this.root = root;
+        this.stateRoot = root;
 	}
 	
 	public void blockingRead() {

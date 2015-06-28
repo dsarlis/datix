@@ -4,24 +4,17 @@ import gr.ntua.cslab.streamnet.beans.State;
 import gr.ntua.cslab.streamnet.cache.KDtreeCache;
 import gr.ntua.cslab.streamnet.cache.LeafPointsCache;
 import gr.ntua.cslab.streamnet.cache.MappingCache;
-import gr.ntua.cslab.streamnet.kdtree.KdTree;
-import gr.ntua.cslab.streamnet.shared.StreamNetStaticComponents;
-import gr.ntua.cslab.streamnet.threads.CopyThread;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStreamWriter;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -45,21 +38,23 @@ public class SyncWorker extends SyncPrimitive {
 	private final String TABLE_NAME;
 	private static final Logger LOG = Logger.getLogger(SyncWorker.class.getName());
 	
-	public SyncWorker (String address, int timeout, String root, String tableName, String boltName) {
+	public SyncWorker (String address, int timeout, String stateRoot, String lockRoot, 
+			String tableName, String boltName) {
         super(address, timeout, boltName);
-        this.root = root;
+        this.stateRoot = stateRoot;
+        this.lockRoot = lockRoot;
         TABLE_NAME = tableName;
 
         if (zk != null) {
             try {
-                Stat s = zk.exists(root, false);
+                Stat s = zk.exists(stateRoot, false);
                 if (s == null) {
-                    zk.create(root, new byte[0], Ids.OPEN_ACL_UNSAFE,
+                    zk.create(stateRoot, new byte[0], Ids.OPEN_ACL_UNSAFE,
                             CreateMode.PERSISTENT);
                 }
-                s = zk.exists("/lock", false);
+                s = zk.exists(lockRoot, false);
                 if (s == null) {
-                	zk.create("/lock", new byte[0], Ids.OPEN_ACL_UNSAFE,
+                	zk.create(lockRoot, new byte[0], Ids.OPEN_ACL_UNSAFE,
                             CreateMode.PERSISTENT);
                 }
             } catch (KeeperException e) {
@@ -100,13 +95,12 @@ public class SyncWorker extends SyncPrimitive {
 		}
         LOG.info("Command Error: "+output.toString());
         ret.put("error", output.toString());
-		return ret;
- 
+		return ret; 
 	}
 	
 	public boolean exists() {
 		try {
-			if (zk.getChildren(root, false).size() != 0 || zk.getChildren("/lock", false).size() != 0) 
+			if (zk.getChildren(stateRoot, false).size() != 0 || zk.getChildren(lockRoot, false).size() != 0) 
 					return true;
 		} catch (KeeperException e) {
 			LOG.info(e.toString());
@@ -124,31 +118,10 @@ public class SyncWorker extends SyncPrimitive {
 			o = new ObjectOutputStream(b);
 			o.writeObject(st);
 			byte[] state = b.toByteArray();
-			/*b = new ByteArrayOutputStream();
-			o = new ObjectOutputStream(b);
-			o.writeObject(MappingCache.getFileMapping());
-			byte[] mapping = b.toByteArray();
-			byte[] points = null;
 			
-			if (newPoints != null) {
-				b = new ByteArrayOutputStream();
-				o = new ObjectOutputStream(b);
-				o.writeObject(newPoints);
-				points = b.toByteArray();
-			}*/
-			
-			zk.create(root + "/state", state, Ids.OPEN_ACL_UNSAFE, 
+			zk.create(stateRoot + "/state", state, Ids.OPEN_ACL_UNSAFE, 
         			CreateMode.PERSISTENT_SEQUENTIAL);
 	        LOG.info("State written to Zookeeper");
-	        /*zk.create(path + "/mapping", mapping, Ids.OPEN_ACL_UNSAFE, 
-	    			CreateMode.PERSISTENT);
-	        LOG.info("Mapping File written to Zookeeper");
-	        zk.create(path + "/points", points, Ids.OPEN_ACL_UNSAFE,
-	        		CreateMode.PERSISTENT);
-	        LOG.info("Points File written to Zookeeper");
-	        zk.create(path + "/kdtree", kdtree, Ids.OPEN_ACL_UNSAFE, 
-        			CreateMode.PERSISTENT);
-	        LOG.info("K-d Tree written to Zookeeper");*/
 	        
 	        return true;
 		} catch (KeeperException e) {
@@ -173,17 +146,17 @@ public class SyncWorker extends SyncPrimitive {
 		}
 	}
 	
-	public String readState() {
+	public String acquireLock() {
 		Stat stat = null;
 		
             synchronized (mutex) {
             	try {
                 	if (!dead) {
-                		String pathName = zk.create("/lock" + "/writelock", new byte[0], 
+                		String pathName = zk.create(lockRoot + "/writelock", new byte[0], 
                 				Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
             			String myName = pathName.substring(15);
                 		while (true) {
-                			List<String> list = zk.getChildren("/lock", false);
+                			List<String> list = zk.getChildren(lockRoot, false);
                 			Collections.sort(list);
                 			int pos =0;
                 			for(String s : list){
@@ -199,8 +172,8 @@ public class SyncWorker extends SyncPrimitive {
                 				return pathName;
                 			}
                 			int prePos =pos-1;
-                			LOG.info("Checking exists: /lock" + "/writeLock" +list.get(prePos).substring(9));
-                			stat = zk.exists("/lock" + "/writeLock" +list.get(prePos).substring(9), true);
+                			LOG.info("Checking exists: " + lockRoot + "/writeLock" +list.get(prePos).substring(9));
+                			stat = zk.exists(lockRoot + "/writeLock" +list.get(prePos).substring(9), true);
                 			if (stat == null) 
                 				continue;
                 			else {
@@ -223,9 +196,27 @@ public class SyncWorker extends SyncPrimitive {
 			return null;
 	}
 	
+	public void blockingStateRead() {	
+		while (true) {
+            synchronized (mutex) {
+            	if (!dead) {
+            		getState();
+                	LOG.info("Going to wait for poll-reading");
+                	try {
+						mutex.wait();
+					} catch (InterruptedException e) {
+						LOG.info(e.toString());
+					}
+                } else {
+                	return;
+                }
+            }
+        }
+	}
+	
 	public boolean update(int id) {
 		// update KDtreeCache, MappingCache, LeafPointsCache
-		String pathName = readState();
+		String pathName = acquireLock();
 		LOG.info("Before K-d Tree is split! Split node is: " + id);
 		double[] splitResult = KDtreeCache.getKd().performSplit(id);
 		int oldId = (int) splitResult[0];
