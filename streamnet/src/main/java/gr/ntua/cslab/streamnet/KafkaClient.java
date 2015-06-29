@@ -34,6 +34,7 @@ public class KafkaClient {
 		loadProperties();
 		
 		FILENAME = args[0];
+		int partitionNo = Integer.parseInt(args[1]);
 		
 		KafkaProducer<String, String> kp = new KafkaProducer<String, String>(props);
 		
@@ -50,7 +51,7 @@ public class KafkaClient {
 //				System.out.println("Sending record: " + line);
 				line = br.readLine();
 				id++;
-				if (id > 3)
+				if (id > partitionNo-1)
 					id = 0;
 			}
 			br.close();

@@ -83,11 +83,11 @@ public class SyncPrimitive implements Watcher {
     		bw.close();
 			
     		LOG.info("Points File read from Zookeeper");
+    		if (LeafPointsCache.getPoints() == null)
+				LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
     		HashMap<Integer, ArrayList<double[]>> newPoints = 
 				(HashMap<Integer, ArrayList<double[]>>) state.getPoints();
     		if (newPoints != null) {
-    			if (LeafPointsCache.getPoints() == null)
-    				LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
     			for (int key: newPoints.keySet()) {
     				String worker = MappingCache.getFileMapping().get(""+key);
     				if (worker.equals(BOLT_NAME)) {

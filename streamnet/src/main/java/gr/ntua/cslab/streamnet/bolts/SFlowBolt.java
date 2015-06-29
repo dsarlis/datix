@@ -102,7 +102,6 @@ public class SFlowBolt extends BaseRichBolt {
 				LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId());
 				LOG.info("Sending record to appropriate worker");
 				_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord));
-				_collector.ack(record);
 			}
 			else {
 				LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId() +
@@ -180,7 +179,6 @@ public class SFlowBolt extends BaseRichBolt {
 								// emit direct to the correct worker
 								LOG.info("Sending record to appropriate worker");
 								_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord1));
-								 _collector.ack(record);
 								 keysRemoved.add(key);
 							}
 						}
@@ -189,6 +187,7 @@ public class SFlowBolt extends BaseRichBolt {
 				SFlowsCache.cleanSflowToStore(keysRemoved);
 			}
 		}
+		_collector.ack(record);
 	}
 
 	@Override
