@@ -1,6 +1,7 @@
 package gr.ntua.cslab.streamnet.cache;
 
 import gr.ntua.cslab.streamnet.beans.SflowsList;
+import gr.ntua.cslab.streamnet.shared.StreamNetStaticComponents;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,7 +12,7 @@ public class SFlowsCache {
 		private static Map<Integer, SflowsList> sflowsToStore ;
 		
 		//caches sflows before sending them to appropriate worker node
-		private static Map<Integer, SflowsList> cachedSflows;
+		private static Map<Integer, String> cachedSflows;
 
 		public static synchronized Map<Integer, SflowsList> getSflowsToStore() {
 			return sflowsToStore;
@@ -21,11 +22,11 @@ public class SFlowsCache {
 			SFlowsCache.sflowsToStore = sflowsToStore;
 		}
 
-		public static synchronized Map<Integer, SflowsList> getCachedSflows() {
+		public static synchronized Map<Integer, String> getCachedSflows() {
 			return cachedSflows;
 		}
 		
-		public static synchronized void setCachedSflows(Map<Integer, SflowsList> cachedSflows) {
+		public static synchronized void setCachedSflows(Map<Integer, String> cachedSflows) {
 			SFlowsCache.cachedSflows = cachedSflows;
 		}
 		
@@ -47,12 +48,13 @@ public class SFlowsCache {
 		}
 		
 		public static synchronized void updateCachedSflows(int key, String value) {
-			SflowsList sflowsList = SFlowsCache.cachedSflows.get(key);
-			if (sflowsList == null) {
-				SFlowsCache.cachedSflows.put(key, new SflowsList(new ArrayList<String>(Arrays.asList(value))));
+			String records = SFlowsCache.cachedSflows.get(key);
+			if (records == null) {
+				SFlowsCache.cachedSflows.put(key, value);
 			}
 			else {
-				sflowsList.updateList(value);
+				records += "," + value;
+				SFlowsCache.cachedSflows.put(key, records);
 			}
 		}
 		
@@ -68,7 +70,7 @@ public class SFlowsCache {
 				}
 			}
 			
-			if (curr > 1000) {
+			if (curr >2500) {
 				flag = true;
 			}
 			return flag;
@@ -80,13 +82,13 @@ public class SFlowsCache {
 			int curr = Integer.MIN_VALUE;
 			
 			for (int key : SFlowsCache.cachedSflows.keySet()) {
-			    curr = SFlowsCache.cachedSflows.get(key).getSflowsList().size();
+			    curr = SFlowsCache.cachedSflows.get(key).split(",").length;
 				if (curr < min) {
 					min = curr; 
 				}
 			}
 			
-			if (curr > 1000) {
+			if (curr > 200) {
 				flag = true;
 			}
 			return flag;

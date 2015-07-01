@@ -79,115 +79,130 @@ public class SFlowBolt extends BaseRichBolt {
 	}
 	
 	@Override
-	public void execute(Tuple record)  {
-		LOG.info("Processing record...");
-		String sFlowRecord = record.getString(0);
-		String[] parts = sFlowRecord.split(" ");
-		String[] ipFrom = parts[0].split("\\.");
-		String[] ipTo = parts[2].split("\\.");
+	public void execute(Tuple tuple)  {
+		String input = tuple.getString(0);
+		String[] records = input.split(",");
+
+		for (String sFlowRecord: records) {
 		
-		if (ipFrom.length > 1 && ipTo.length > 1) {
-			PartitionInfo pInfo = getPartitionNumber(sFlowRecord);
-			int partitionId = pInfo.getPartitionId();
-			double[] point = pInfo.getPoint();
+			LOG.info("Processing record...");
+//			String sFlowRecord = record.getString(0);
+			String[] parts = sFlowRecord.split(" ");
+			String[] ipFrom = parts[0].split("\\.");
+			String[] ipTo = parts[2].split("\\.");
+		
+			if (ipFrom.length > 1 && ipTo.length > 1) {
+				PartitionInfo pInfo = getPartitionNumber(sFlowRecord);
+				int partitionId = pInfo.getPartitionId();
+				double[] point = pInfo.getPoint();
 			
-			String worker = MappingCache.getFileMapping().get("" + partitionId);
+				String worker = MappingCache.getFileMapping().get("" + partitionId);
 			
-			List<Integer> myList = _topo.getComponentTasks(boltName);
-			LOG.info("List of IDs: " + myList.toString());
-			// if record belongs to another worker send it there
-			if ( !worker.equals(boltName) || myList.get(partitionId % myList.size()) != _topo.getThisTaskId() ) {
-				List<Integer> l = _topo.getComponentTasks(worker);
-				// emit direct to the correct worker
-				LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId());
-				LOG.info("Sending record to appropriate worker");
-				_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord));
-			}
-			else {
-				LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId() +
-						" pos in list: " + myList.get(partitionId % myList.size()));
-				Random ran = new Random();
-				if (ran.nextDouble() < 0.05) {
-					LOG.info("Added Point in Kd-Tree");
-					KDtreeCache.getKd().addPoint(partitionId);
-					LeafPointsCache.addPoint(partitionId, point);
+				List<Integer> myList = _topo.getComponentTasks(boltName);
+				LOG.info("List of IDs: " + myList.toString());
+				// if record belongs to another worker send it there
+				if ( !worker.equals(boltName) || myList.get(partitionId % myList.size()) != _topo.getThisTaskId() ) {
+					SFlowsCache.updateCachedSflows(partitionId, sFlowRecord);
+					
+					if (SFlowsCache.fullCachedSflows()) {
+						for (int key: SFlowsCache.getCachedSflows().keySet()) {
+							// emit direct to the correct worker
+							String sflows = SFlowsCache.getCachedSflows().get(key);
+							LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId());
+							LOG.info("Sending record to appropriate worker");
+							String worker1 = MappingCache.getFileMapping().get("" + key);
+							List<Integer> l = _topo.getComponentTasks(worker1);
+							_collector.emitDirect(l.get(key % l.size()), new Values(sflows));
+						}
+						SFlowsCache.setCachedSflows(new HashMap<Integer, String>());
+					}
 				}
-				SFlowsCache.updateSflowsToStore(partitionId, sFlowRecord);
-				LOG.info("Added Point in cache");
+				else {
+					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId() +
+							" pos in list: " + myList.get(partitionId % myList.size()));
+					Random ran = new Random();
+					if (ran.nextDouble() < 0.05) {
+						LOG.info("Added Point in Kd-Tree");
+						KDtreeCache.getKd().addPoint(partitionId);
+						LeafPointsCache.addPoint(partitionId, point);
+					}
+					SFlowsCache.updateSflowsToStore(partitionId, sFlowRecord);
+					LOG.info("Added Point in cache");
 				
-				// check if SFlowsCache is full
-				// if so, write data to HDFS
-				ArrayList<Integer> keysRemoved = new ArrayList<Integer>();
-				Iterator<Integer> keySet = SFlowsCache.getSflowsToStore().keySet().iterator();
-				if (SFlowsCache.fullSflowsToStore()) {
-					while (keySet.hasNext()) {
-						int key = keySet.next();
-						if (KDtreeCache.getKd().isLeaf(key)) {
-							Configuration conf = new Configuration();
-							conf.set("fs.hdfs.impl", 
-							        org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
-							 conf.set("fs.file.impl",
-							        org.apache.hadoop.fs.LocalFileSystem.class.getName());
-							FileSystem fs = null;
-							long length = 0;
-							try {
-								fs = FileSystem.get(conf);
-								length = fs.getFileStatus(new Path("hdfs://master:9000/opt/warehouse/" 
-										+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz")).getLen();
-							} catch (IOException e1) {
-								LOG.info(e1.getMessage());
-							}
-							if (length < 500000) {
-								// file is below block size, so just write data to it
-								while (true) {
-									try {
-										SflowsList sflowsList = SFlowsCache.getSflowsToStore().get(key);
-										//use key to open the correct file
-										Path pt = new Path("hdfs://master:9000/opt/warehouse/" 
-												+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz");
-										BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
-												new GZIPOutputStream(fs.append(pt)), "UTF-8"));
-										for (String r : sflowsList.getSflowsList()) {
-											bw.write(r);
-											bw.newLine();
-										}
-										bw.close();
-										LOG.info("Successfully written data to HDFS file");
-										//clean up SflowsToStore HashMap
-										keysRemoved.add(key);
-										break;
-									} catch (IOException e) {
-										LOG.info(e.getMessage());
-									}		
+					// check if SFlowsCache is full
+					// if so, write data to HDFS
+					ArrayList<Integer> keysRemoved = new ArrayList<Integer>();
+					Iterator<Integer> keySet = SFlowsCache.getSflowsToStore().keySet().iterator();
+					if (SFlowsCache.fullSflowsToStore()) {
+						while (keySet.hasNext()) {
+							int key = keySet.next();
+							if (KDtreeCache.getKd().isLeaf(key)) {
+								Configuration conf = new Configuration();
+								conf.set("fs.hdfs.impl", 
+										org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+								conf.set("fs.file.impl",
+										org.apache.hadoop.fs.LocalFileSystem.class.getName());
+								FileSystem fs = null;
+								long length = 0;
+								try {
+									fs = FileSystem.get(conf);
+									length = fs.getFileStatus(new Path("hdfs://master:9000/opt/warehouse/" 
+											+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz")).getLen();
+								} catch (IOException e1) {
+									LOG.info(e1.getMessage());
+								}
+								if (length < 500000) {
+									// file is below block size, so just write data to it
+									while (true) {
+										try {
+											SflowsList sflowsList = SFlowsCache.getSflowsToStore().get(key);
+											//use key to open the correct file
+											Path pt = new Path("hdfs://master:9000/opt/warehouse/" 
+													+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz");
+											BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
+													new GZIPOutputStream(fs.append(pt)), "UTF-8"));
+											for (String r : sflowsList.getSflowsList()) {
+												bw.write(r);
+												bw.newLine();
+											}
+											bw.close();
+											LOG.info("Successfully written data to HDFS file");
+											//clean up SflowsToStore HashMap
+											keysRemoved.add(key);
+											break;
+										} catch (IOException e) {
+											LOG.info(e.getMessage());
+										}		
+									}
+								}
+								else {
+									// file exceeds block size, so we have to perform a split
+									SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", "/lock", TABLE_NAME, boltName);
+									LOG.info("Performing a split in Kd-Tree");
+									sw.update(key);
+//									Thread splitThread = new Thread(new SplitThread("master:2181", "/datix", key, TABLE_NAME));
+//									splitThread.start();
 								}
 							}
 							else {
-								// file exceeds block size, so we have to perform a split
-								SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", "/lock", TABLE_NAME, boltName);
-								LOG.info("Performing a split in Kd-Tree");
-								sw.update(key);
-//								Thread splitThread = new Thread(new SplitThread("master:2181", "/datix", key, TABLE_NAME));
-//								splitThread.start();
-							}
-						}
-						else {
-							for (String sFlowRecord1 : SFlowsCache.getSflowsToStore().get(key).getSflowsList()) {
-								pInfo = getPartitionNumber(sFlowRecord1);
-								partitionId = pInfo.getPartitionId();
-								String worker1 = MappingCache.getFileMapping().get("" + partitionId);
-								List<Integer> l = _topo.getComponentTasks(worker1);
-								// emit direct to the correct worker
-								LOG.info("Sending record to appropriate worker");
-								_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord1));
-								 keysRemoved.add(key);
+								for (String sFlowRecord1 : SFlowsCache.getSflowsToStore().get(key).getSflowsList()) {
+									pInfo = getPartitionNumber(sFlowRecord1);
+									partitionId = pInfo.getPartitionId();
+									String worker1 = MappingCache.getFileMapping().get("" + partitionId);
+									List<Integer> l = _topo.getComponentTasks(worker1);
+									// emit direct to the correct worker
+									LOG.info("Sending record to appropriate worker");
+									_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord1));
+									keysRemoved.add(key);
+								}
 							}
 						}
 					}
+					SFlowsCache.cleanSflowToStore(keysRemoved);
 				}
-				SFlowsCache.cleanSflowToStore(keysRemoved);
 			}
 		}
-		_collector.ack(record);
+		_collector.ack(tuple);
 	}
 
 	@Override
@@ -214,6 +229,7 @@ public class SFlowBolt extends BaseRichBolt {
 		else {
 			sw.getState();
 		}
+		SFlowsCache.setCachedSflows(new HashMap<Integer, String>());
 		SFlowsCache.setSflowsToStore(new HashMap<Integer, SflowsList>());
 		Thread zkReadThread = new Thread(new ZkReadThread("master:2181",
 				"/datix", "/lock", TABLE_NAME, boltName, waitTime));

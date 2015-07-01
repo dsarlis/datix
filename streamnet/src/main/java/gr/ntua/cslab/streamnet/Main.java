@@ -29,6 +29,8 @@ public class Main {
         
         StreamNetStaticComponents.TABLE_NAME = args[0];
         StreamNetStaticComponents.splitSize = Integer.parseInt(args[6]);
+        StreamNetStaticComponents.fullCached = Integer.parseInt(args[12]);
+        StreamNetStaticComponents.fullStore = Integer.parseInt(args[13]);
 
         SpoutConfig kafkaConfig = new SpoutConfig(brokerHosts, TOPIC_NAME, "", "storm");
         kafkaConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
@@ -56,7 +58,7 @@ public class Main {
         }
         
         Config conf = new Config();
-        conf.setDebug(true);
+//        conf.setDebug(true);
 
         if (args != null && args.length > 1) {
           // remote cluster
@@ -65,6 +67,7 @@ public class Main {
           conf.put(Config.TOPOLOGY_EXECUTOR_RECEIVE_BUFFER_SIZE, Integer.parseInt(args[8]));
           conf.put(Config.TOPOLOGY_EXECUTOR_SEND_BUFFER_SIZE, Integer.parseInt(args[9]));
           conf.put(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS, Integer.parseInt(args[10]));
+          conf.put(Config.TOPOLOGY_RECEIVER_BUFFER_SIZE, Integer.parseInt(args[11]));
           StormSubmitter.submitTopologyWithProgressBar(args[1], conf, builder.createTopology());
           Logger.getLogger(Main.class.getName()).info("StreamNet is Started!");
         }

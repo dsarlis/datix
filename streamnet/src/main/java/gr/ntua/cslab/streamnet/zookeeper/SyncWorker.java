@@ -217,7 +217,8 @@ public class SyncWorker extends SyncPrimitive {
 	public boolean update(int id) {
 		// update KDtreeCache, MappingCache, LeafPointsCache
 		String pathName = acquireLock();
-		LOG.info("Before K-d Tree is split! Split node is: " + id);
+		LOG.info("Keyset in LeafPointsCache: " + LeafPointsCache.getPoints().keySet());
+		LOG.info("Before K-d Tree is going to be split! Split node is: " + id);
 		double[] splitResult = KDtreeCache.getKd().performSplit(id);
 		int oldId = (int) splitResult[0];
 		int leftId = (int) splitResult[1];

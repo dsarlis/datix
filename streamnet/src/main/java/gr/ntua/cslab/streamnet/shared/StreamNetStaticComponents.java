@@ -5,4 +5,6 @@ public class StreamNetStaticComponents {
 		"worker7", "worker8", "worker9", "worker10", "worker11", "worker12", "worker13", "worker14"};
 	public static String TABLE_NAME;
 	public static int splitSize;
+	public static int fullCached;
+	public static int fullStore;
 }
