@@ -45,10 +45,12 @@ public class SFlowBolt extends BaseRichBolt {
 	TopologyContext _topo;
 	private String boltName;
 	private final String TABLE_NAME;
+	private int boltNo;
 	
-	public SFlowBolt(String boltName) {
+	public SFlowBolt(String boltName, int boltNo) {
 		this.boltName = boltName;
 		this.TABLE_NAME = StreamNetStaticComponents.TABLE_NAME;
+		this.boltNo = boltNo;
 	}
 	
 	private PartitionInfo getPartitionNumber(String record) {
@@ -80,13 +82,13 @@ public class SFlowBolt extends BaseRichBolt {
 	
 	@Override
 	public void execute(Tuple tuple)  {
-		String input = tuple.getString(0);
-		String[] records = input.split(",");
+//		String input = tuple.getString(0);
+//		String[] records = input.split(",");
 
-		for (String sFlowRecord: records) {
+//		for (String sFlowRecord: records) {
 		
 			LOG.info("Processing record...");
-//			String sFlowRecord = record.getString(0);
+			String sFlowRecord = tuple.getString(0);
 			String[] parts = sFlowRecord.split(" ");
 			String[] ipFrom = parts[0].split("\\.");
 			String[] ipTo = parts[2].split("\\.");
@@ -102,7 +104,7 @@ public class SFlowBolt extends BaseRichBolt {
 				LOG.info("List of IDs: " + myList.toString());
 				// if record belongs to another worker send it there
 				if ( !worker.equals(boltName) || myList.get(partitionId % myList.size()) != _topo.getThisTaskId() ) {
-					SFlowsCache.updateCachedSflows(partitionId, sFlowRecord);
+					/*SFlowsCache.updateCachedSflows(partitionId, sFlowRecord);
 					
 					if (SFlowsCache.fullCachedSflows()) {
 						for (int key: SFlowsCache.getCachedSflows().keySet()) {
@@ -112,10 +114,17 @@ public class SFlowBolt extends BaseRichBolt {
 							LOG.info("Sending record to appropriate worker");
 							String worker1 = MappingCache.getFileMapping().get("" + key);
 							List<Integer> l = _topo.getComponentTasks(worker1);
+							LOG.info("List of worker ids: " + l);
 							_collector.emitDirect(l.get(key % l.size()), new Values(sflows));
 						}
 						SFlowsCache.setCachedSflows(new HashMap<Integer, String>());
-					}
+					}*/
+					
+					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId());
+					LOG.info("Sending record to appropriate worker");
+					List<Integer> l = _topo.getComponentTasks(worker);
+					LOG.info("List of worker ids: " + l);
+					_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord));		
 				}
 				else {
 					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId() +
@@ -135,8 +144,8 @@ public class SFlowBolt extends BaseRichBolt {
 					Iterator<Integer> keySet = SFlowsCache.getSflowsToStore().keySet().iterator();
 					if (SFlowsCache.fullSflowsToStore()) {
 						while (keySet.hasNext()) {
-							int key = keySet.next();
-							if (KDtreeCache.getKd().isLeaf(key)) {
+							int k = keySet.next();
+							if (KDtreeCache.getKd().isLeaf(k)) {
 								Configuration conf = new Configuration();
 								conf.set("fs.hdfs.impl", 
 										org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
@@ -147,7 +156,7 @@ public class SFlowBolt extends BaseRichBolt {
 								try {
 									fs = FileSystem.get(conf);
 									length = fs.getFileStatus(new Path("hdfs://master:9000/opt/warehouse/" 
-											+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz")).getLen();
+											+ TABLE_NAME + "/part=" + k + "/part-" + k + ".gz")).getLen();
 								} catch (IOException e1) {
 									LOG.info(e1.getMessage());
 								}
@@ -155,10 +164,10 @@ public class SFlowBolt extends BaseRichBolt {
 									// file is below block size, so just write data to it
 									while (true) {
 										try {
-											SflowsList sflowsList = SFlowsCache.getSflowsToStore().get(key);
+											SflowsList sflowsList = SFlowsCache.getSflowsToStore().get(k);
 											//use key to open the correct file
 											Path pt = new Path("hdfs://master:9000/opt/warehouse/" 
-													+ TABLE_NAME + "/part=" + key + "/part-" + key + ".gz");
+													+ TABLE_NAME + "/part=" + k + "/part-" + k + ".gz");
 											BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
 													new GZIPOutputStream(fs.append(pt)), "UTF-8"));
 											for (String r : sflowsList.getSflowsList()) {
@@ -168,7 +177,7 @@ public class SFlowBolt extends BaseRichBolt {
 											bw.close();
 											LOG.info("Successfully written data to HDFS file");
 											//clean up SflowsToStore HashMap
-											keysRemoved.add(key);
+											keysRemoved.add(k);
 											break;
 										} catch (IOException e) {
 											LOG.info(e.getMessage());
@@ -177,15 +186,15 @@ public class SFlowBolt extends BaseRichBolt {
 								}
 								else {
 									// file exceeds block size, so we have to perform a split
-									SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", "/lock", TABLE_NAME, boltName);
+									SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", "/lock", TABLE_NAME, boltName, _topo, boltNo);
 									LOG.info("Performing a split in Kd-Tree");
-									sw.update(key);
+									sw.update(k);
 //									Thread splitThread = new Thread(new SplitThread("master:2181", "/datix", key, TABLE_NAME));
 //									splitThread.start();
 								}
 							}
 							else {
-								for (String sFlowRecord1 : SFlowsCache.getSflowsToStore().get(key).getSflowsList()) {
+								for (String sFlowRecord1 : SFlowsCache.getSflowsToStore().get(k).getSflowsList()) {
 									pInfo = getPartitionNumber(sFlowRecord1);
 									partitionId = pInfo.getPartitionId();
 									String worker1 = MappingCache.getFileMapping().get("" + partitionId);
@@ -193,7 +202,7 @@ public class SFlowBolt extends BaseRichBolt {
 									// emit direct to the correct worker
 									LOG.info("Sending record to appropriate worker");
 									_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord1));
-									keysRemoved.add(key);
+									keysRemoved.add(k);
 								}
 							}
 						}
@@ -201,7 +210,7 @@ public class SFlowBolt extends BaseRichBolt {
 					SFlowsCache.cleanSflowToStore(keysRemoved);
 				}
 			}
-		}
+//		}
 		_collector.ack(tuple);
 	}
 
@@ -213,7 +222,7 @@ public class SFlowBolt extends BaseRichBolt {
 		int waitTime = 10000;
 		// initialize memory caches
 		SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", 
-				"/lock", TABLE_NAME, boltName);
+				"/lock", TABLE_NAME, boltName, _topo, boltNo);
 		if (!sw.exists()) {
 			KDtreeCache.setKd(new KdTree<Long>(KDtreeCache.getDimensions().length,
 					KDtreeCache.getBucketSize()));
@@ -232,7 +241,7 @@ public class SFlowBolt extends BaseRichBolt {
 		SFlowsCache.setCachedSflows(new HashMap<Integer, String>());
 		SFlowsCache.setSflowsToStore(new HashMap<Integer, SflowsList>());
 		Thread zkReadThread = new Thread(new ZkReadThread("master:2181",
-				"/datix", "/lock", TABLE_NAME, boltName, waitTime));
+				"/datix", "/lock", TABLE_NAME, boltName, waitTime, _topo, boltNo));
 		zkReadThread.start();
 	}
 

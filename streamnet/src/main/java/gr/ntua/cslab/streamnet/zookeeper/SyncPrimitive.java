@@ -23,6 +23,8 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 
+import backtype.storm.task.TopologyContext;
+
 public class SyncPrimitive implements Watcher {
 	public static ZooKeeper zk = null;
     public static Integer mutex;
@@ -31,15 +33,17 @@ public class SyncPrimitive implements Watcher {
     private String address;
     private int timeout;
     protected final String BOLT_NAME;
+    private TopologyContext topo;
     private static final Logger LOG = Logger.getLogger(SyncPrimitive.class.getName());
 
     public String stateRoot;
     public String lockRoot;
 
-    public SyncPrimitive(String address, int timeout, String boltName) {
+    public SyncPrimitive(String address, int timeout, String boltName, TopologyContext topo) {
     	this.address = address;
     	this.timeout = timeout;
     	this.BOLT_NAME = boltName;
+    	this.topo = topo;
         if(zk == null){
             try {
                 System.out.println("Starting ZK:");
@@ -90,7 +94,8 @@ public class SyncPrimitive implements Watcher {
     		if (newPoints != null) {
     			for (int key: newPoints.keySet()) {
     				String worker = MappingCache.getFileMapping().get(""+key);
-    				if (worker.equals(BOLT_NAME)) {
+    				List<Integer> myList = topo.getComponentTasks(BOLT_NAME);
+    				if (worker.equals(BOLT_NAME) && myList.get(key % myList.size()) == topo.getThisTaskId()) {
     					if (newPoints.get(key) != null) {
     						for (double[] point: newPoints.get(key)) {
     							LeafPointsCache.addPoint(key, point);

@@ -4,6 +4,8 @@ import gr.ntua.cslab.streamnet.beans.State;
 import gr.ntua.cslab.streamnet.cache.KDtreeCache;
 import gr.ntua.cslab.streamnet.cache.LeafPointsCache;
 import gr.ntua.cslab.streamnet.cache.MappingCache;
+import gr.ntua.cslab.streamnet.shared.StreamNetStaticComponents;
+import gr.ntua.cslab.streamnet.threads.CopyThread;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -33,16 +35,20 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.data.Stat;
 
+import backtype.storm.task.TopologyContext;
+
 public class SyncWorker extends SyncPrimitive {
 	public static boolean isAlive = false;
 	private final String TABLE_NAME;
+	private int boltNo;
 	private static final Logger LOG = Logger.getLogger(SyncWorker.class.getName());
 	
 	public SyncWorker (String address, int timeout, String stateRoot, String lockRoot, 
-			String tableName, String boltName) {
-        super(address, timeout, boltName);
+			String tableName, String boltName, TopologyContext topo, int boltNo) {
+        super(address, timeout, boltName, topo);
         this.stateRoot = stateRoot;
         this.lockRoot = lockRoot;
+        this.boltNo = boltNo;
         TABLE_NAME = tableName;
 
         if (zk != null) {
@@ -239,10 +245,10 @@ public class SyncWorker extends SyncPrimitive {
 			LOG.info("Going to split node now!");
 			//TODO load balance partitions among workers
 			Random ran = new Random();
-			int worker1 = ran.nextInt(8) + 1;
-			int worker2 = ran.nextInt(8) + 1;
+			int worker1 = ran.nextInt(boltNo) + 1;
+			int worker2 = ran.nextInt(boltNo) + 1;
 			while (worker2 == worker1) {
-				worker2 = ran.nextInt(8) + 1;
+				worker2 = ran.nextInt(boltNo) + 1;
 			}
 			MappingCache.updateMapping("" + (int)splitResult[1], "worker" + worker1, ""+(int) splitResult[2], "worker" + worker2);
 			
@@ -267,11 +273,11 @@ public class SyncWorker extends SyncPrimitive {
 			}
 			
 			// move data to new partitions
-			/*Thread copyThread = new Thread(new CopyThread((int)splitResult[0], 
+			Thread copyThread = new Thread(new CopyThread((int)splitResult[0], 
 					(int)splitResult[1], (int) splitResult[2], splitResult[3], (int) splitResult[4], TABLE_NAME));
-			copyThread.start();*/
+			copyThread.start();
 			
-			Path pt = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
+			/*Path pt = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
 					+ "/part=" + oldId + "/part-" + oldId + ".gz");
 //			while (true) {
 				try {
@@ -334,7 +340,7 @@ public class SyncWorker extends SyncPrimitive {
 				System.err.println(e.toString());
 			} catch (InterruptedException e) {
 				System.err.println(e.toString());
-			}
+			}*/
 			
 			// update zookeeper views
 			this.writeState(newPoints);

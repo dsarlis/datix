@@ -45,7 +45,7 @@ public class KafkaClient {
 			String line;
 			line = br.readLine();
 			int id = 0;
-			while (line != null) {
+			/*while (line != null) {
 				int count = 0;
 				String records = "";
 				while (count < batchSize && line != null) {
@@ -57,6 +57,15 @@ public class KafkaClient {
 				ProducerRecord<String, String> data = 
 						new ProducerRecord<String, String>(TOPIC_NAME, id, ""+id, records);
 				kp.send(data);
+				id++;
+				if (id > partitionNo-1)
+					id = 0;
+			}*/
+			while (line != null) {
+				ProducerRecord<String, String> data = 
+						new ProducerRecord<String, String>(TOPIC_NAME, id, ""+id, line);
+				kp.send(data);
+				line = br.readLine();
 				id++;
 				if (id > partitionNo-1)
 					id = 0;

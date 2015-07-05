@@ -70,7 +70,7 @@ public class SFlowsCache {
 				}
 			}
 			
-			if (curr >2500) {
+			if (curr > 1000) {
 				flag = true;
 			}
 			return flag;

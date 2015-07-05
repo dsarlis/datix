@@ -7,4 +7,5 @@ public class StreamNetStaticComponents {
 	public static int splitSize;
 	public static int fullCached;
 	public static int fullStore;
+	public static int boltNo;
 }

@@ -48,13 +48,16 @@ public class Main {
         
         BoltDeclarer bd = null;
         for (int i = 1; i <= boltNo; i ++) {
-        	bd = builder.setBolt("worker" + i, new SFlowBolt("worker" + i), boltPar);
+        	bd = builder.setBolt("worker" + i, new SFlowBolt("worker" + i, boltNo), boltPar);
         	for (int j = 1; j <= spoutNo; j++) {
         		bd = bd.shuffleGrouping("words" + j);
         	}
         	for (int k = 1; k <= boltNo; k++) {
         		bd = bd.directGrouping("worker" + k);
         	}
+        	/*bd = builder.setBolt("worker" + i, new ExclamationBolt(), boltPar);
+        	for (int j = 1; j <= spoutNo; j++)
+        		bd = bd.shuffleGrouping("words" + j);*/
         }
         
         Config conf = new Config();
