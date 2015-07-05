@@ -28,9 +28,9 @@ public class Main {
         BrokerHosts brokerHosts = new ZkHosts("master:2181");
         
         StreamNetStaticComponents.TABLE_NAME = args[0];
-        StreamNetStaticComponents.splitSize = Integer.parseInt(args[6]);
+        int splitSize = Integer.parseInt(args[6]);
         StreamNetStaticComponents.fullCached = Integer.parseInt(args[12]);
-        StreamNetStaticComponents.fullStore = Integer.parseInt(args[13]);
+        int fullStore = Integer.parseInt(args[13]);
 
         SpoutConfig kafkaConfig = new SpoutConfig(brokerHosts, TOPIC_NAME, "", "storm");
         kafkaConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
@@ -48,7 +48,7 @@ public class Main {
         
         BoltDeclarer bd = null;
         for (int i = 1; i <= boltNo; i ++) {
-        	bd = builder.setBolt("worker" + i, new SFlowBolt("worker" + i, boltNo), boltPar);
+        	bd = builder.setBolt("worker" + i, new SFlowBolt("worker" + i, boltNo, splitSize, fullStore), boltPar);
         	for (int j = 1; j <= spoutNo; j++) {
         		bd = bd.shuffleGrouping("words" + j);
         	}

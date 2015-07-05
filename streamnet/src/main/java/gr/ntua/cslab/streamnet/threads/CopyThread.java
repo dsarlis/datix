@@ -128,7 +128,7 @@ public class CopyThread implements Runnable {
 				}	
 			}
 		
-			String[] delCommand = new String[] {"hive", "-e", "ALTER TABLE " + TABLE_NAME 
+			/*String[] delCommand = new String[] {"hive", "-e", "ALTER TABLE " + TABLE_NAME 
 					+" DROP PARTITION (part = '" + oldId + "');"};
 			try {
 				executeCommand(delCommand);
@@ -136,6 +136,6 @@ public class CopyThread implements Runnable {
 				System.err.println(e.toString());
 			} catch (InterruptedException e) {
 				System.err.println(e.toString());
-			}	
+			}	*/
 		}
 }

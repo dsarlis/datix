@@ -46,11 +46,15 @@ public class SFlowBolt extends BaseRichBolt {
 	private String boltName;
 	private final String TABLE_NAME;
 	private int boltNo;
+	private int splitSize;
+	private int fullStore;
 	
-	public SFlowBolt(String boltName, int boltNo) {
+	public SFlowBolt(String boltName, int boltNo, int splitSize, int fullStore) {
 		this.boltName = boltName;
 		this.TABLE_NAME = StreamNetStaticComponents.TABLE_NAME;
 		this.boltNo = boltNo;
+		this.splitSize = splitSize;
+		this.fullStore = fullStore;
 	}
 	
 	private PartitionInfo getPartitionNumber(String record) {
@@ -160,7 +164,7 @@ public class SFlowBolt extends BaseRichBolt {
 								} catch (IOException e1) {
 									LOG.info(e1.getMessage());
 								}
-								if (length < 500000) {
+								if (length < splitSize) {
 									// file is below block size, so just write data to it
 									while (true) {
 										try {
@@ -240,6 +244,7 @@ public class SFlowBolt extends BaseRichBolt {
 		}
 		SFlowsCache.setCachedSflows(new HashMap<Integer, String>());
 		SFlowsCache.setSflowsToStore(new HashMap<Integer, SflowsList>());
+		SFlowsCache.setFullStore(fullStore);
 		Thread zkReadThread = new Thread(new ZkReadThread("master:2181",
 				"/datix", "/lock", TABLE_NAME, boltName, waitTime, _topo, boltNo));
 		zkReadThread.start();

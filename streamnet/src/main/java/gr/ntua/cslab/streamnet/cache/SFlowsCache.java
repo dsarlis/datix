@@ -1,7 +1,6 @@
 package gr.ntua.cslab.streamnet.cache;
 
 import gr.ntua.cslab.streamnet.beans.SflowsList;
-import gr.ntua.cslab.streamnet.shared.StreamNetStaticComponents;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,6 +9,7 @@ import java.util.Map;
 public class SFlowsCache {
 		//caches sflows before writing them to HDFS
 		private static Map<Integer, SflowsList> sflowsToStore ;
+		private static int fullStore;
 		
 		//caches sflows before sending them to appropriate worker node
 		private static Map<Integer, String> cachedSflows;
@@ -20,6 +20,14 @@ public class SFlowsCache {
 		
 		public static synchronized void setSflowsToStore(Map<Integer, SflowsList> sflowsToStore) {
 			SFlowsCache.sflowsToStore = sflowsToStore;
+		}
+		
+		public static synchronized int getFullStore() {
+			return fullStore;
+		}
+
+		public static synchronized void setFullStore(int fullStore) {
+			SFlowsCache.fullStore = fullStore;
 		}
 
 		public static synchronized Map<Integer, String> getCachedSflows() {
@@ -70,7 +78,7 @@ public class SFlowsCache {
 				}
 			}
 			
-			if (curr > 1000) {
+			if (curr > SFlowsCache.fullStore) {
 				flag = true;
 			}
 			return flag;
