@@ -13,6 +13,7 @@ import storm.kafka.ZkHosts;
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
 import backtype.storm.StormSubmitter;
+import backtype.storm.metric.LoggingMetricsConsumer;
 import backtype.storm.spout.SchemeAsMultiScheme;
 import backtype.storm.topology.BoltDeclarer;
 import backtype.storm.topology.TopologyBuilder;
@@ -61,7 +62,8 @@ public class Main {
         }
         
         Config conf = new Config();
-//        conf.setDebug(true);
+        conf.setDebug(true);
+        conf.registerMetricsConsumer(LoggingMetricsConsumer.class, boltPar);
 
         if (args != null && args.length > 1) {
           // remote cluster

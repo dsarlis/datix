@@ -213,6 +213,11 @@ public class SyncWorker extends SyncPrimitive {
 					} catch (InterruptedException e) {
 						LOG.info(e.toString());
 					}
+                	/*try {
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+						LOG.info(e.toString());
+					}*/
                 } else {
                 	return;
                 }

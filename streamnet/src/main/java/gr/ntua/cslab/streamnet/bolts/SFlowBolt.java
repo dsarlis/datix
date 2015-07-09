@@ -30,6 +30,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
+import backtype.storm.metric.api.CountMetric;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -43,6 +44,7 @@ public class SFlowBolt extends BaseRichBolt {
 	private static final Logger LOG = Logger.getLogger(SFlowBolt.class.getName());
 	OutputCollector _collector;
 	TopologyContext _topo;
+	transient CountMetric _countMetric;
 	private String boltName;
 	private final String TABLE_NAME;
 	private int boltNo;
@@ -82,6 +84,11 @@ public class SFlowBolt extends BaseRichBolt {
 		}
 		
 		return new PartitionInfo(KDtreeCache.getKd().find(point), point);
+	}
+	
+	private void updateMetrics(int count)
+	{
+	  _countMetric.incrBy(count);
 	}
 	
 	@Override
@@ -174,11 +181,16 @@ public class SFlowBolt extends BaseRichBolt {
 													+ TABLE_NAME + "/part=" + k + "/part-" + k + ".gz");
 											BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
 													new GZIPOutputStream(fs.append(pt)), "UTF-8"));
+											int count = 0;
 											for (String r : sflowsList.getSflowsList()) {
 												bw.write(r);
 												bw.newLine();
+												// increment counter of processed records
+												count++;
+												
 											}
 											bw.close();
+											updateMetrics(count);
 											LOG.info("Successfully written data to HDFS file");
 											//clean up SflowsToStore HashMap
 											keysRemoved.add(k);
@@ -191,7 +203,7 @@ public class SFlowBolt extends BaseRichBolt {
 								else {
 									// file exceeds block size, so we have to perform a split
 									SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", "/lock", TABLE_NAME, boltName, _topo, boltNo);
-									LOG.info("Performing a split in Kd-Tree");
+									LOG.info("File size exceeded bucket size. Performing a split in Kd-Tree");
 									sw.update(k);
 //									Thread splitThread = new Thread(new SplitThread("master:2181", "/datix", key, TABLE_NAME));
 //									splitThread.start();
@@ -217,13 +229,22 @@ public class SFlowBolt extends BaseRichBolt {
 //		}
 		_collector.ack(tuple);
 	}
-
+	
+	private void initMetrics(TopologyContext context)
+	{
+	    _countMetric = new CountMetric();
+	    
+	    context.registerMetric("record_count", _countMetric, 1);
+	}
+	
 	@Override
 	public void prepare(@SuppressWarnings("rawtypes") Map conf, TopologyContext topo, 
 			OutputCollector collector) {
 		_collector = collector;
 		_topo = topo;
 		int waitTime = 10000;
+		// initialize metrics
+		initMetrics(topo);
 		// initialize memory caches
 		SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", 
 				"/lock", TABLE_NAME, boltName, _topo, boltNo);
