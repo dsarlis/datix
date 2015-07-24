@@ -61,14 +61,20 @@ public class KafkaClient {
 				if (id > partitionNo-1)
 					id = 0;
 			}*/
+			int count = 0;
 			while (line != null) {
+				count++;
 				ProducerRecord<String, String> data = 
 						new ProducerRecord<String, String>(TOPIC_NAME, id, ""+id, line);
+//				ProducerRecord<String, String> data = 
+//						new ProducerRecord<String, String>(TOPIC_NAME, id, ""+id, "mitsos"+count);
 				kp.send(data);
 				line = br.readLine();
 				id++;
 				if (id > partitionNo-1)
 					id = 0;
+				if (count > 500000)
+					break;
 			}
 			br.close();
 		    kp.close();

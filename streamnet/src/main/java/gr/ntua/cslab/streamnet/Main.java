@@ -1,5 +1,6 @@
 package gr.ntua.cslab.streamnet;
 
+import gr.ntua.cslab.streamnet.bolts.ExclamationBolt;
 import gr.ntua.cslab.streamnet.bolts.SFlowBolt;
 import gr.ntua.cslab.streamnet.shared.StreamNetStaticComponents;
 
@@ -43,27 +44,30 @@ public class Main {
         int boltPar = Integer.parseInt(args[5]);
 
         // initialize spouts
-        for (int i = 1; i <= spoutNo; i ++) {
-        	builder.setSpout("words" + i, new KafkaSpout(kafkaConfig), spoutPar);
-        }
+//        for (int i = 1; i <= spoutNo; i ++) {
+        	builder.setSpout("words", new KafkaSpout(kafkaConfig), spoutNo);
+//        }
         
         BoltDeclarer bd = null;
         for (int i = 1; i <= boltNo; i ++) {
-        	bd = builder.setBolt("worker" + i, new SFlowBolt("worker" + i, boltNo, splitSize, fullStore), boltPar);
+        	/*bd = builder.setBolt("worker" + i, new SFlowBolt("worker" + i, boltNo, splitSize, fullStore), boltPar);
         	for (int j = 1; j <= spoutNo; j++) {
         		bd = bd.shuffleGrouping("words" + j);
         	}
         	for (int k = 1; k <= boltNo; k++) {
         		bd = bd.directGrouping("worker" + k);
+        	}*/
+        	bd = builder.setBolt("worker" + i, new ExclamationBolt(boltNo), boltPar);
+//        	for (int j = 1; j <= spoutNo; j++)
+        		bd = bd.shuffleGrouping("words");
+        	for (int k = 1; k <= boltNo; k++) {
+        		bd = bd.directGrouping("worker" + k);
         	}
-        	/*bd = builder.setBolt("worker" + i, new ExclamationBolt(), boltPar);
-        	for (int j = 1; j <= spoutNo; j++)
-        		bd = bd.shuffleGrouping("words" + j);*/
         }
         
         Config conf = new Config();
         conf.setDebug(true);
-        conf.registerMetricsConsumer(LoggingMetricsConsumer.class, boltPar);
+//        conf.registerMetricsConsumer(LoggingMetricsConsumer.class, boltPar);
 
         if (args != null && args.length > 1) {
           // remote cluster

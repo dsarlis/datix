@@ -208,16 +208,16 @@ public class SyncWorker extends SyncPrimitive {
             	if (!dead) {
             		getState();
                 	LOG.info("Going to wait for poll-reading");
-                	try {
+                	/*try {
 						mutex.wait();
 					} catch (InterruptedException e) {
 						LOG.info(e.toString());
-					}
-                	/*try {
+					}*/
+                	try {
 						Thread.sleep(500);
 					} catch (InterruptedException e) {
 						LOG.info(e.toString());
-					}*/
+					}
                 } else {
                 	return;
                 }
