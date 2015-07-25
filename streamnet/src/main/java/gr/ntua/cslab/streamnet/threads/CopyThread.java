@@ -41,7 +41,7 @@ public class CopyThread implements Runnable {
 		for (int i = 0; i < command.length; i++) {
 			c+=command[i]+" ";
 		}
-		System.out.println(c);
+//		System.out.println(c);
 		
 		StringBuffer output = new StringBuffer();
 		ProcessBuilder p = new ProcessBuilder(command);
@@ -55,7 +55,7 @@ public class CopyThread implements Runnable {
 		while ((line = reader.readLine())!= null) {
 			output.append(line + "\n");
 		}
-        System.out.println("Command Output: "+output.toString());
+//        System.out.println("Command Output: "+output.toString());
         ret.put("output", output.toString());
 		reader = new BufferedReader(new InputStreamReader(p1.getErrorStream()));
 		line = "";	
@@ -63,14 +63,14 @@ public class CopyThread implements Runnable {
 		while ((line = reader.readLine())!= null) {
 			output.append(line + "\n");
 		}
-        System.out.println("Command Error: "+output.toString());
+//        System.out.println("Command Error: "+output.toString());
         ret.put("error", output.toString());
 		return ret; 
 	}
 
 	@Override
 	public void run() {
-		System.out.println(oldId + " " + leftId + " " + rightId);
+//		System.out.println(oldId + " " + leftId + " " + rightId);
 		
 		Path pt = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
 				+ "/part=" + oldId + "/part-" + oldId + ".gz");

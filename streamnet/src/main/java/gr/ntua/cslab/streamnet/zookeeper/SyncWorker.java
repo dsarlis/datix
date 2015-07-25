@@ -77,7 +77,7 @@ public class SyncWorker extends SyncPrimitive {
 		for (int i = 0; i < command.length; i++) {
 			c+=command[i]+" ";
 		}
-		LOG.info(c);
+//		LOG.info(c);
 		
 		StringBuffer output = new StringBuffer();
 		ProcessBuilder p = new ProcessBuilder(command);
@@ -91,7 +91,7 @@ public class SyncWorker extends SyncPrimitive {
 		while ((line = reader.readLine())!= null) {
 			output.append(line + "\n");
 		}
-        LOG.info("Command Output: "+output.toString());
+//        LOG.info("Command Output: "+output.toString());
         ret.put("output", output.toString());
 		reader = new BufferedReader(new InputStreamReader(p1.getErrorStream()));
 		line = "";	
@@ -99,7 +99,7 @@ public class SyncWorker extends SyncPrimitive {
 		while ((line = reader.readLine())!= null) {
 			output.append(line + "\n");
 		}
-        LOG.info("Command Error: "+output.toString());
+//        LOG.info("Command Error: "+output.toString());
         ret.put("error", output.toString());
 		return ret; 
 	}
@@ -127,7 +127,7 @@ public class SyncWorker extends SyncPrimitive {
 			
 			zk.create(stateRoot + "/state", state, Ids.OPEN_ACL_UNSAFE, 
         			CreateMode.PERSISTENT_SEQUENTIAL);
-	        LOG.info("State written to Zookeeper");
+//	        LOG.info("State written to Zookeeper");
 	        
 	        return true;
 		} catch (KeeperException e) {
@@ -141,10 +141,10 @@ public class SyncWorker extends SyncPrimitive {
 	}
 	
 	private void releaseLock(String pathName) {
-		LOG.info("Done with the lock. Releasing pathName: " + pathName);
+//		LOG.info("Done with the lock. Releasing pathName: " + pathName);
 		try {
 			zk.delete(pathName, 0);
-			LOG.info("Successfully released lock!!!");
+//			LOG.info("Successfully released lock!!!");
 		} catch (InterruptedException e) {
 			LOG.info(e.toString());
 		} catch (KeeperException e) {
@@ -166,24 +166,24 @@ public class SyncWorker extends SyncPrimitive {
                 			Collections.sort(list);
                 			int pos =0;
                 			for(String s : list){
-                    			LOG.info("Checking: " + s.substring(9)+" , "+myName);
+//                    			LOG.info("Checking: " + s.substring(9)+" , "+myName);
                 				if(s.substring(9).equals(myName)){
                 					break;
                 				}
                 				pos++;
                 			}
-                			LOG.info("position: " + pos);
+//                			LOG.info("position: " + pos);
                 			if (pos==0) {     
                 				getState();
                 				return pathName;
                 			}
                 			int prePos =pos-1;
-                			LOG.info("Checking exists: " + lockRoot + "/writeLock" +list.get(prePos).substring(9));
+//                			LOG.info("Checking exists: " + lockRoot + "/writeLock" +list.get(prePos).substring(9));
                 			stat = zk.exists(lockRoot + "/writeLock" +list.get(prePos).substring(9), true);
                 			if (stat == null) 
                 				continue;
                 			else {
-                				LOG.info("Going to wait because someone else is trying to write");
+//                				LOG.info("Going to wait because someone else is trying to write");
                 				mutex.wait();
                 			}
                 		}
@@ -207,7 +207,7 @@ public class SyncWorker extends SyncPrimitive {
             synchronized (mutex) {
             	if (!dead) {
             		getState();
-                	LOG.info("Going to wait for poll-reading");
+//                	LOG.info("Going to wait for poll-reading");
                 	/*try {
 						mutex.wait();
 					} catch (InterruptedException e) {
@@ -228,8 +228,8 @@ public class SyncWorker extends SyncPrimitive {
 	public boolean update(int id) {
 		// update KDtreeCache, MappingCache, LeafPointsCache
 		String pathName = acquireLock();
-		LOG.info("Keyset in LeafPointsCache: " + LeafPointsCache.getPoints().keySet());
-		LOG.info("Before K-d Tree is going to be split! Split node is: " + id);
+//		LOG.info("Keyset in LeafPointsCache: " + LeafPointsCache.getPoints().keySet());
+//		LOG.info("Before K-d Tree is going to be split! Split node is: " + id);
 		double[] splitResult = KDtreeCache.getKd().performSplit(id);
 		int oldId = (int) splitResult[0];
 		int leftId = (int) splitResult[1];
@@ -247,7 +247,7 @@ public class SyncWorker extends SyncPrimitive {
 		LeafPointsCache.deletePoints(oldId);
 		
 		if ((int) splitResult[0] != -1) {
-			LOG.info("Going to split node now!");
+//			LOG.info("Going to split node now!");
 			//TODO load balance partitions among workers
 			Random ran = new Random();
 			int worker1 = ran.nextInt(boltNo) + 1;
@@ -356,7 +356,7 @@ public class SyncWorker extends SyncPrimitive {
 			return true;
 		}
 		else {
-			LOG.info("Something went wrong. Not performing split!!!");
+//			LOG.info("Something went wrong. Not performing split!!!");
 			return false;
 		}
 	}

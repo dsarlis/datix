@@ -18,7 +18,7 @@ public class KafkaClient {
 	
 	private static void loadProperties() {
 		props = new Properties();
-		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "master:9092");
+		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "master:9092, master:9093");
 		props.put(ProducerConfig.RETRIES_CONFIG, "3");
 		props.put(ProducerConfig.ACKS_CONFIG, "all");
 		props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "none");
@@ -35,7 +35,9 @@ public class KafkaClient {
 		
 		FILENAME = args[0];
 		int partitionNo = Integer.parseInt(args[1]);
-		int batchSize = Integer.parseInt(args[2]);
+		int cutoff = Integer.parseInt(args[2]);
+		
+		System.out.println("******" + cutoff + "*******");
 		
 		KafkaProducer<String, String> kp = new KafkaProducer<String, String>(props);
 		
@@ -61,6 +63,7 @@ public class KafkaClient {
 				if (id > partitionNo-1)
 					id = 0;
 			}*/
+
 			int count = 0;
 			while (line != null) {
 				count++;
@@ -73,7 +76,7 @@ public class KafkaClient {
 				id++;
 				if (id > partitionNo-1)
 					id = 0;
-				if (count > 500000)
+				if (count > cutoff)
 					break;
 			}
 			br.close();

@@ -19,7 +19,7 @@ public class BlockingRead extends SyncPrimitive {
             synchronized (mutex) {
             	if (!dead) {
             		getState();
-                	LOG.info("Going to wait for poll-reading");
+//                	LOG.info("Going to wait for poll-reading");
                 	try {
 						mutex.wait();
 					} catch (InterruptedException e) {

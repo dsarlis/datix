@@ -36,7 +36,7 @@ public class ZkReadThread implements Runnable {
 			}
 		}
 		SyncWorker sw = new SyncWorker(zkHosts, 2000000, stateRoot, lockRoot, tableName, boltName, topo, boltNo);
-		System.out.println("Started reading K-d Tree and Mapping File into memory...");
+//		System.out.println("Started reading K-d Tree and Mapping File into memory...");
 		sw.blockingStateRead();
 	}
 }

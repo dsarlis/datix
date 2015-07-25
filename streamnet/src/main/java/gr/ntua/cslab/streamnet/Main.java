@@ -2,6 +2,7 @@ package gr.ntua.cslab.streamnet;
 
 import gr.ntua.cslab.streamnet.bolts.ExclamationBolt;
 import gr.ntua.cslab.streamnet.bolts.SFlowBolt;
+import gr.ntua.cslab.streamnet.bolts.SimpleBolt;
 import gr.ntua.cslab.streamnet.shared.StreamNetStaticComponents;
 
 import java.util.logging.Logger;
@@ -33,9 +34,7 @@ public class Main {
         int splitSize = Integer.parseInt(args[6]);
         StreamNetStaticComponents.fullCached = Integer.parseInt(args[12]);
         int fullStore = Integer.parseInt(args[13]);
-
-        SpoutConfig kafkaConfig = new SpoutConfig(brokerHosts, TOPIC_NAME, "", "storm");
-        kafkaConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
+        String topology = args[14];
         
         TopologyBuilder builder = new TopologyBuilder();
         int spoutNo = Integer.parseInt(args[2]);
@@ -44,29 +43,44 @@ public class Main {
         int boltPar = Integer.parseInt(args[5]);
 
         // initialize spouts
+        SpoutConfig kafkaConfig = new SpoutConfig(brokerHosts, TOPIC_NAME, "", "storm");
+    	kafkaConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
 //        for (int i = 1; i <= spoutNo; i ++) {
         	builder.setSpout("words", new KafkaSpout(kafkaConfig), spoutNo);
 //        }
         
-        BoltDeclarer bd = null;
-        for (int i = 1; i <= boltNo; i ++) {
-        	/*bd = builder.setBolt("worker" + i, new SFlowBolt("worker" + i, boltNo, splitSize, fullStore), boltPar);
-        	for (int j = 1; j <= spoutNo; j++) {
-        		bd = bd.shuffleGrouping("words" + j);
-        	}
-        	for (int k = 1; k <= boltNo; k++) {
-        		bd = bd.directGrouping("worker" + k);
-        	}*/
-        	bd = builder.setBolt("worker" + i, new ExclamationBolt(boltNo), boltPar);
-//        	for (int j = 1; j <= spoutNo; j++)
+        if (topology.equals("kdtree")) {
+        	BoltDeclarer bd = null;
+        	for (int i = 1; i <= boltNo; i ++) {
+        		bd = builder.setBolt("worker" + i, new SFlowBolt("worker" + i, boltNo, splitSize, fullStore), boltPar);
+//        		for (int j = 1; j <= spoutNo; j++) {
         		bd = bd.shuffleGrouping("words");
-        	for (int k = 1; k <= boltNo; k++) {
-        		bd = bd.directGrouping("worker" + k);
+//        		}
+        		for (int k = 1; k <= boltNo; k++) {
+        			bd = bd.directGrouping("worker" + k);
+        		}
+        	}
+        }
+        else if (topology.equals("exclamation")) {
+        	BoltDeclarer bd = null;
+        	for (int i = 1; i <= boltNo; i ++) {
+        		bd = builder.setBolt("worker" + i, new ExclamationBolt(boltNo, splitSize), boltPar);
+        		bd = bd.shuffleGrouping("words");
+        		for (int k = 1; k <= boltNo; k++) {
+        			bd = bd.directGrouping("worker" + k);
+        		}
+        	}
+        }
+        else {
+        	BoltDeclarer bd = null;
+        	for (int i = 1; i <= boltNo; i ++) {
+        		bd = builder.setBolt("worker" + i, new SimpleBolt(), boltPar);
+        		bd = bd.shuffleGrouping("words");
         	}
         }
         
         Config conf = new Config();
-        conf.setDebug(true);
+        conf.setDebug(false);
 //        conf.registerMetricsConsumer(LoggingMetricsConsumer.class, boltPar);
 
         if (args != null && args.length > 1) {

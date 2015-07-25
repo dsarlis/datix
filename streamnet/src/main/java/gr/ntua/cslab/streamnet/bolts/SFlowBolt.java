@@ -98,7 +98,7 @@ public class SFlowBolt extends BaseRichBolt {
 
 //		for (String sFlowRecord: records) {
 		
-			LOG.info("Processing record...");
+//			LOG.info("Processing record...");
 			String sFlowRecord = tuple.getString(0);
 			String[] parts = sFlowRecord.split(" ");
 			String[] ipFrom = parts[0].split("\\.");
@@ -112,7 +112,7 @@ public class SFlowBolt extends BaseRichBolt {
 				String worker = MappingCache.getFileMapping().get("" + partitionId);
 			
 				List<Integer> myList = _topo.getComponentTasks(boltName);
-				LOG.info("List of IDs: " + myList.toString());
+//				LOG.info("List of IDs: " + myList.toString());
 				// if record belongs to another worker send it there
 				if ( !worker.equals(boltName) || myList.get(partitionId % myList.size()) != _topo.getThisTaskId() ) {
 					/*SFlowsCache.updateCachedSflows(partitionId, sFlowRecord);
@@ -131,23 +131,23 @@ public class SFlowBolt extends BaseRichBolt {
 						SFlowsCache.setCachedSflows(new HashMap<Integer, String>());
 					}*/
 					
-					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId());
-					LOG.info("Sending record to appropriate worker");
+//					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId());
+//					LOG.info("Sending record to appropriate worker");
 					List<Integer> l = _topo.getComponentTasks(worker);
-					LOG.info("List of worker ids: " + l);
+//					LOG.info("List of worker ids: " + l);
 					_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord));		
 				}
 				else {
-					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId() +
-							" pos in list: " + myList.get(partitionId % myList.size()));
+//					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId() +
+//							" pos in list: " + myList.get(partitionId % myList.size()));
 					Random ran = new Random();
 					if (ran.nextDouble() < 0.05) {
-						LOG.info("Added Point in Kd-Tree");
+//						LOG.info("Added Point in Kd-Tree");
 						KDtreeCache.getKd().addPoint(partitionId);
 						LeafPointsCache.addPoint(partitionId, point);
 					}
 					SFlowsCache.updateSflowsToStore(partitionId, sFlowRecord);
-					LOG.info("Added Point in cache");
+//					LOG.info("Added Point in cache");
 				
 					// check if SFlowsCache is full
 					// if so, write data to HDFS
@@ -191,7 +191,7 @@ public class SFlowBolt extends BaseRichBolt {
 											}
 											bw.close();
 											updateMetrics(count);
-											LOG.info("Successfully written data to HDFS file");
+//											LOG.info("Successfully written data to HDFS file");
 											//clean up SflowsToStore HashMap
 											keysRemoved.add(k);
 											break;
@@ -203,7 +203,7 @@ public class SFlowBolt extends BaseRichBolt {
 								else {
 									// file exceeds block size, so we have to perform a split
 									SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", "/lock", TABLE_NAME, boltName, _topo, boltNo);
-									LOG.info("File size exceeded bucket size. Performing a split in Kd-Tree");
+//									LOG.info("File size exceeded bucket size. Performing a split in Kd-Tree");
 									sw.update(k);
 //									Thread splitThread = new Thread(new SplitThread("master:2181", "/datix", key, TABLE_NAME));
 //									splitThread.start();
@@ -216,7 +216,7 @@ public class SFlowBolt extends BaseRichBolt {
 									String worker1 = MappingCache.getFileMapping().get("" + partitionId);
 									List<Integer> l = _topo.getComponentTasks(worker1);
 									// emit direct to the correct worker
-									LOG.info("Sending record to appropriate worker");
+//									LOG.info("Sending record to appropriate worker");
 									_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord1));
 									keysRemoved.add(k);
 								}

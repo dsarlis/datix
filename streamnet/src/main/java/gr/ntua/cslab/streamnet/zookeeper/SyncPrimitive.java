@@ -66,13 +66,13 @@ public class SyncPrimitive implements Watcher {
     		Collections.sort(list);
     		String last = list.get(list.size()-1);
 		
-    		LOG.info("FileList: " + list);
-    		LOG.info("Chosen one: " + last);
+//    		LOG.info("FileList: " + list);
+//    		LOG.info("Chosen one: " + last);
 		
     		//wait for all files to exist
     			
     		byte[] b = zk.getData(stateRoot + "/" + last, false, stat);
-    		LOG.info("Mapping File read from Zookeeper");
+//    		LOG.info("Mapping File read from Zookeeper");
     		ObjectInputStream o = new ObjectInputStream(new ByteArrayInputStream(b));
     		State state = (State) o.readObject();
     		o.close();
@@ -86,7 +86,7 @@ public class SyncPrimitive implements Watcher {
     		}
     		bw.close();
 			
-    		LOG.info("Points File read from Zookeeper");
+//    		LOG.info("Points File read from Zookeeper");
     		if (LeafPointsCache.getPoints() == null)
 				LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
     		HashMap<Integer, ArrayList<double[]>> newPoints = 
@@ -115,7 +115,7 @@ public class SyncPrimitive implements Watcher {
     			bw.close();
     		}
 			
-    		LOG.info("K-d Tree read from Zookeeper");
+//    		LOG.info("K-d Tree read from Zookeeper");
     		KdTree<Long> newKd = state.getKd();
     		if (KDtreeCache.getKd() == null || newKd.countLeafs() > KDtreeCache.getKd().countLeafs())
     			KDtreeCache.setKd(newKd);
