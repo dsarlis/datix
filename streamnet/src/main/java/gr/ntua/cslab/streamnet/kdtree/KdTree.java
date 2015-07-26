@@ -109,7 +109,7 @@ public class KdTree<T> extends KdNode<T> {
    	 	return isLeaf1(id);
     }
     
-    public double[] performSplit(int id) {
+    public synchronized double[] performSplit(int id) {
     	KdNode<T> cursor = calculateSplit(id);
     	if (cursor != null)
     		return splitLeafNode(cursor);

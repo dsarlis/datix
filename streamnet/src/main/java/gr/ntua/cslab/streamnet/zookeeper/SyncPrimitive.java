@@ -79,12 +79,12 @@ public class SyncPrimitive implements Watcher {
     		HashMap<String, String> newMapping = (HashMap<String, String>) state.getFileMapping();
     		if (MappingCache.getFileMapping() == null || newMapping.keySet().size() > MappingCache.getFileMapping().keySet().size())
     			MappingCache.setFileMapping(newMapping);
-    		BufferedWriter bw = new BufferedWriter(new FileWriter("/tmp/mapping_dup"));
+    		/*BufferedWriter bw = new BufferedWriter(new FileWriter("/tmp/mapping_dup"));
     		for (String key: MappingCache.getFileMapping().keySet()) {
     			bw.write("key: " + key + " value: " + MappingCache.getFileMapping().get(key));
     			bw.newLine();
     		}
-    		bw.close();
+    		bw.close();*/
 			
 //    		LOG.info("Points File read from Zookeeper");
     		if (LeafPointsCache.getPoints() == null)
@@ -103,7 +103,7 @@ public class SyncPrimitive implements Watcher {
     					}
     				}
     			}
-    			bw = new BufferedWriter(new FileWriter("/tmp/leaf_points"));
+    			/*bw = new BufferedWriter(new FileWriter("/tmp/leaf_points"));
     			for (int key: LeafPointsCache.getPoints().keySet()) {
     				bw.write("key: " + key + " value: something not null");
     				bw.newLine();
@@ -112,16 +112,16 @@ public class SyncPrimitive implements Watcher {
     					bw.newLine();
     				}
     			}
-    			bw.close();
+    			bw.close();*/
     		}
 			
 //    		LOG.info("K-d Tree read from Zookeeper");
     		KdTree<Long> newKd = state.getKd();
     		if (KDtreeCache.getKd() == null || newKd.countLeafs() > KDtreeCache.getKd().countLeafs())
     			KDtreeCache.setKd(newKd);
-    		bw = new BufferedWriter(new FileWriter("/tmp/kdtree_dup"));
+    		/*bw = new BufferedWriter(new FileWriter("/tmp/kdtree_dup"));
     		KDtreeCache.getKd().printTree(bw);
-    		bw.close();
+    		bw.close();*/
     	} catch (KeeperException e) {
     		System.err.println("Keeper exception when trying to read data "
     				+ "from Zookeeper: " + e.toString());

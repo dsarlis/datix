@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.StringTokenizer;
 
@@ -155,7 +156,7 @@ public class KdNode<T> implements Serializable {
         KdNode<T> cursor = this;
         if (cursor.isLeaf()) {
         	if (cursor.id == id) {
-        		System.out.println("Inside KdTree.addPoint for key: " + id + " singlePoint: " + cursor.singlePoint);
+//        		System.out.println("Inside KdTree.addPoint for key: " + id + " singlePoint: " + cursor.singlePoint);
         		cursor.singlePoint = false;
         	}
         	return;
@@ -198,9 +199,9 @@ public class KdNode<T> implements Serializable {
 		        // Start the split in the middle of the variance
 		        //splitValue = (minBound[splitDimension] + maxBound[splitDimension]) * 0.5;
 		        List<Double> l = new ArrayList<Double>();
-		        ArrayList<double[]> temp = new ArrayList<double[]>();
-		        temp = LeafPointsCache.getPoints().get(id);
-		        for (double[] point: temp) {
+		        Iterator<double[]> temp = LeafPointsCache.getPoints().get(id).iterator();
+		        while (temp.hasNext()) {
+		        		double[] point = temp.next();
 		        		l.add(point[cursor.splitDimension]);
 				}
 		        Collections.sort(l);

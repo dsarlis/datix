@@ -124,7 +124,7 @@ public class CopyThread implements Runnable {
 				bwRight.close();
 				break;
 				} catch (IOException e) {
-					System.err.println(e.toString());
+//					System.err.println(e.toString());
 				}	
 			}
 		

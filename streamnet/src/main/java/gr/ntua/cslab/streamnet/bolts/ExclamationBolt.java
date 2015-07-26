@@ -20,10 +20,12 @@ public class ExclamationBolt extends BaseRichBolt {
 	TopologyContext _topo;
 	private int boltNo;
 	private int randomNo;
+	private String name;
 
-	public ExclamationBolt(int boltNo, int randomNo) {
+	public ExclamationBolt(String name, int boltNo, int randomNo) {
 		this.boltNo = boltNo;
 		this.randomNo = randomNo;
+		this.name = name;
 	}
 	
     @Override
@@ -40,11 +42,14 @@ public class ExclamationBolt extends BaseRichBolt {
     		for (int i = 0; i < randomNo; i++) {
     			worker = ran.nextInt(boltNo) + 1;
     		}
+    		while (name.equals("worker" + worker))
+    			worker = ran.nextInt(boltNo) + 1;
     		List<Integer> l = _topo.getComponentTasks("worker" + worker);
 //    		LOG.info("List: " + l + " for worker: " + worker);
     		String out = tuple.getString(0) + "!";
-//    		LOG.info("Sending record: " + tuple.getString(0) + " to appropriate worker: worker" + worker);
+    		LOG.info("Sending record: " + tuple.getString(0) + " to appropriate worker: worker" + worker);
     		_collector.emitDirect(l.get(0), new Values(out));
+    		LOG.info("After emit");
     	}
     	else {
 //    		LOG.info("Already processed record: " + tuple.getString(0));

@@ -181,22 +181,22 @@ public class SFlowBolt extends BaseRichBolt {
 													+ TABLE_NAME + "/part=" + k + "/part-" + k + ".gz");
 											BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
 													new GZIPOutputStream(fs.append(pt)), "UTF-8"));
-											int count = 0;
+//											int count = 0;
 											for (String r : sflowsList.getSflowsList()) {
 												bw.write(r);
 												bw.newLine();
 												// increment counter of processed records
-												count++;
+//												count++;
 												
 											}
 											bw.close();
-											updateMetrics(count);
+//											updateMetrics(count);
 //											LOG.info("Successfully written data to HDFS file");
 											//clean up SflowsToStore HashMap
 											keysRemoved.add(k);
 											break;
 										} catch (IOException e) {
-											LOG.info(e.getMessage());
+//											LOG.info(e.getMessage());
 										}		
 									}
 								}
@@ -244,7 +244,7 @@ public class SFlowBolt extends BaseRichBolt {
 		_topo = topo;
 		int waitTime = 10000;
 		// initialize metrics
-		initMetrics(topo);
+//		initMetrics(topo);
 		// initialize memory caches
 		SyncWorker sw = new SyncWorker("master:2181", 2000000, "/datix", 
 				"/lock", TABLE_NAME, boltName, _topo, boltNo);

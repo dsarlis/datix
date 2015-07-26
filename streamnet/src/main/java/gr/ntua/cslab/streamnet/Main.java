@@ -64,10 +64,11 @@ public class Main {
         else if (topology.equals("exclamation")) {
         	BoltDeclarer bd = null;
         	for (int i = 1; i <= boltNo; i ++) {
-        		bd = builder.setBolt("worker" + i, new ExclamationBolt(boltNo, splitSize), boltPar);
+        		bd = builder.setBolt("worker" + i, new ExclamationBolt("worker" + i, boltNo, splitSize), boltPar);
         		bd = bd.shuffleGrouping("words");
         		for (int k = 1; k <= boltNo; k++) {
-        			bd = bd.directGrouping("worker" + k);
+        			if (i != k)
+        				bd = bd.directGrouping("worker" + k);
         		}
         	}
         }
