@@ -24,6 +24,7 @@ public class BlockingRead extends SyncPrimitive {
 						mutex.wait();
 					} catch (InterruptedException e) {
 						LOG.info(e.toString());
+						e.printStackTrace();
 					}
                 	/*try {
 						Thread.sleep(500);

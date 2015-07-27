@@ -10,6 +10,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -24,6 +25,7 @@ public class CopyThread implements Runnable {
 	private double splitValue;
 	private int splitDimension;
 	private final String TABLE_NAME;
+	private static final Logger LOG = Logger.getLogger(CopyThread.class.getName());
 
 	public CopyThread(int oldId, int leftId, int rightId, double splitValue, 
 			int splitDimension, String tableName) {
@@ -88,7 +90,7 @@ public class CopyThread implements Runnable {
 				BufferedWriter bwRight = new BufferedWriter(new OutputStreamWriter(
 						new GZIPOutputStream(fs.create(ptRight))));
 				String line;
-				System.out.println("------->Splitvalue chosen: " + splitValue + " SplitDimension: " + splitDimension);
+//				System.out.println("------->Splitvalue chosen: " + splitValue + " SplitDimension: " + splitDimension);
 				while ((line = br.readLine()) != null) {
 					String[] parts1 = line.split(" ");
 					double value = 0;
@@ -107,7 +109,7 @@ public class CopyThread implements Runnable {
 				 						}
 				 							break;
                      
-						default: System.err.println("Dimension number " + splitDimension);
+						default: LOG.info("Dimension number " + splitDimension);
 											break;
 					}
 					if (value > splitValue) {
@@ -133,9 +135,11 @@ public class CopyThread implements Runnable {
 			try {
 				executeCommand(delCommand);
 			} catch (IOException e) {
-				System.err.println(e.toString());
+				LOG.info(e.toString());
+				e.printStackTrace();
 			} catch (InterruptedException e) {
-				System.err.println(e.toString());
+				LOG.info(e.toString());
+				e.printStackTrace();
 			}
 		}
 }

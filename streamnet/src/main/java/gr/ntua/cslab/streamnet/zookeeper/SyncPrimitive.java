@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import org.apache.zookeeper.KeeperException;
@@ -33,7 +34,7 @@ public class SyncPrimitive implements Watcher {
     private String address;
     private int timeout;
     protected final String BOLT_NAME;
-    private TopologyContext topo;
+    protected TopologyContext topo;
     private static final Logger LOG = Logger.getLogger(SyncPrimitive.class.getName());
 
     public String stateRoot;
@@ -44,65 +45,71 @@ public class SyncPrimitive implements Watcher {
     	this.timeout = timeout;
     	this.BOLT_NAME = boltName;
     	this.topo = topo;
-        if(zk == null){
-            try {
-                System.out.println("Starting ZK:");
-                zk = new ZooKeeper(address, timeout, this);
-                mutex = new Integer(-1);
-                dead = false;
-                System.out.println("Finished starting ZK: " + zk);
-            } catch (IOException e) {
-            	System.err.println(e.toString());
-                zk = null;
-            }
-        }
+    
+    	if(zk == null){
+    		while (true) {
+    			try {
+    				System.out.println("Starting ZK:");
+    				zk = new ZooKeeper(address, timeout, this);
+    				mutex = new Integer(-1);
+    				dead = false;
+    				System.out.println("Finished starting ZK: " + zk);
+    				return;
+    			} catch (IOException e) {
+    				LOG.info("!!!!" + e.toString());
+    				e.printStackTrace();
+    				zk = null;
+    			}
+    		}
+    	}
         //else mutex = new Integer(-1);
     }
     
     synchronized public void getState() {
     	Stat stat = null;
-    	try {
-    		List<String> list = zk.getChildren(stateRoot, true);
-    		Collections.sort(list);
-    		String last = list.get(list.size()-1);
+    	while (true) {
+    		try {
+    			List<String> list = zk.getChildren(stateRoot, true);
+    			Collections.sort(list);
+    			String last = list.get(list.size()-1);
 		
-//    		LOG.info("FileList: " + list);
-//    		LOG.info("Chosen one: " + last);
+//    			LOG.info("FileList: " + list);
+//    			LOG.info("Chosen one: " + last);
 		
-    		//wait for all files to exist
+    			//wait for all files to exist
     			
-    		byte[] b = zk.getData(stateRoot + "/" + last, false, stat);
-//    		LOG.info("Mapping File read from Zookeeper");
-    		ObjectInputStream o = new ObjectInputStream(new ByteArrayInputStream(b));
-    		State state = (State) o.readObject();
-    		o.close();
-    		HashMap<String, String> newMapping = (HashMap<String, String>) state.getFileMapping();
-    		if (MappingCache.getFileMapping() == null || newMapping.keySet().size() > MappingCache.getFileMapping().keySet().size())
-    			MappingCache.setFileMapping(newMapping);
-    		/*BufferedWriter bw = new BufferedWriter(new FileWriter("/tmp/mapping_dup"));
-    		for (String key: MappingCache.getFileMapping().keySet()) {
-    			bw.write("key: " + key + " value: " + MappingCache.getFileMapping().get(key));
-    			bw.newLine();
-    		}
-    		bw.close();*/
+    			byte[] b = zk.getData(stateRoot + "/" + last, false, stat);
+//    			LOG.info("Mapping File read from Zookeeper");
+    			ObjectInputStream o = new ObjectInputStream(new ByteArrayInputStream(b));
+    			State state = (State) o.readObject();
+    			o.close();
+    			HashMap<String, String> newMapping = (HashMap<String, String>) state.getFileMapping();
+    			if (MappingCache.getFileMapping() == null || newMapping.keySet().size() > MappingCache.getFileMapping().keySet().size())
+    				MappingCache.setFileMapping(newMapping);
+    			BufferedWriter bw = new BufferedWriter(new FileWriter("/tmp/mapping_dup"));
+    			for (String key: MappingCache.getFileMapping().keySet()) {
+    				bw.write("key: " + key + " value: " + MappingCache.getFileMapping().get(key));
+    				bw.newLine();
+    			}
+    			bw.close();
 			
-//    		LOG.info("Points File read from Zookeeper");
-    		if (LeafPointsCache.getPoints() == null)
-				LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
-    		HashMap<Integer, ArrayList<double[]>> newPoints = 
-				(HashMap<Integer, ArrayList<double[]>>) state.getPoints();
-    		if (newPoints != null) {
-    			for (int key: newPoints.keySet()) {
-    				String worker = MappingCache.getFileMapping().get(""+key);
-    				List<Integer> myList = topo.getComponentTasks(BOLT_NAME);
-    				if (worker.equals(BOLT_NAME) && myList.get(key % myList.size()) == topo.getThisTaskId()) {
-    					if (newPoints.get(key) != null) {
-    						for (double[] point: newPoints.get(key)) {
-    							LeafPointsCache.addPoint(key, point);
+//    			LOG.info("Points File read from Zookeeper");
+    			if (LeafPointsCache.getPoints() == null)
+    				LeafPointsCache.setPoints(new ConcurrentHashMap<Integer, ArrayList<double[]>>());
+    			HashMap<Integer, ArrayList<double[]>> newPoints = 
+    					(HashMap<Integer, ArrayList<double[]>>) state.getPoints();
+    			if (newPoints != null) {
+    				for (int key: newPoints.keySet()) {
+    					int workerId = Integer.parseInt(MappingCache.getFileMapping().get(""+key));
+//    					List<Integer> myList = topo.getComponentTasks(BOLT_NAME);
+    					if (workerId == topo.getThisTaskId()) {
+    						if (newPoints.get(key) != null) {
+    							for (double[] point: newPoints.get(key)) {
+    								LeafPointsCache.addPoint(key, point);
+    							}
     						}
     					}
     				}
-    			}
     			/*bw = new BufferedWriter(new FileWriter("/tmp/leaf_points"));
     			for (int key: LeafPointsCache.getPoints().keySet()) {
     				bw.write("key: " + key + " value: something not null");
@@ -113,26 +120,32 @@ public class SyncPrimitive implements Watcher {
     				}
     			}
     			bw.close();*/
-    		}
+    			}
 			
-//    		LOG.info("K-d Tree read from Zookeeper");
-    		KdTree<Long> newKd = state.getKd();
-    		if (KDtreeCache.getKd() == null || newKd.countLeafs() > KDtreeCache.getKd().countLeafs())
-    			KDtreeCache.setKd(newKd);
-    		/*bw = new BufferedWriter(new FileWriter("/tmp/kdtree_dup"));
-    		KDtreeCache.getKd().printTree(bw);
-    		bw.close();*/
-    	} catch (KeeperException e) {
-    		System.err.println("Keeper exception when trying to read data "
-    				+ "from Zookeeper: " + e.toString());
-    	} catch (InterruptedException e) {
-    		System.err.println("Interrupted exception when trying to read data "
-    				+ "from Zookeeper: " + e.toString());
-    	} catch (IOException e) {
-    		System.err.println("IO exception when trying to read data "
-    				+ "from Zookeeper: " + e.toString());
-    	} catch (ClassNotFoundException e) {
-    		System.err.println(e.toString());
+//    			LOG.info("K-d Tree read from Zookeeper");
+    			KdTree<Long> newKd = state.getKd();
+    			if (KDtreeCache.getKd() == null || newKd.countLeafs() > KDtreeCache.getKd().countLeafs())
+    				KDtreeCache.setKd(newKd);
+    			bw = new BufferedWriter(new FileWriter("/tmp/kdtree_dup"));
+    			KDtreeCache.getKd().printTree(bw);
+    			bw.close();
+    			return;
+    		} catch (KeeperException e) {
+    			LOG.info("!!!Keeper exception when trying to read data "
+    					+ "from Zookeeper: " + e.toString());
+    			e.printStackTrace();
+    		} catch (InterruptedException e) {
+    			LOG.info("!!!Interrupted exception when trying to read data "
+    					+ "from Zookeeper: " + e.toString());
+    			e.printStackTrace();
+    		} catch (IOException e) {
+    			LOG.info("!!!IO exception when trying to read data "
+    					+ "from Zookeeper: " + e.toString());
+    			e.printStackTrace();
+    		} catch (ClassNotFoundException e) {
+    			LOG.info("!!!!" + e.toString());
+    			e.printStackTrace();
+    		}
     	}
     }
 
@@ -151,15 +164,39 @@ public class SyncPrimitive implements Watcher {
             	case Expired:
             		// It's all over
             		try {
-            			mutex.notifyAll();
-            			zk = new ZooKeeper(address, timeout, this);
-            			mutex = new Integer(-1);
-            			dead = false;
+            			synchronized(mutex) {
+            				mutex.notifyAll();
+            				zk = new ZooKeeper(address, timeout, this);
+            				mutex = new Integer(-1);
+            				dead = false;
+            			}
+            		} catch (IOException e) {
+            			e.printStackTrace();
+            		}
+            		break;
+            	case Disconnected:
+            		try {
+            			synchronized (mutex) {
+            				mutex.notifyAll();
+            				zk = new ZooKeeper(address, timeout, this);
+            				mutex = new Integer(-1);
+            				dead = false;
+            			}
             		} catch (IOException e) {
             			e.printStackTrace();
             		}
             		break;
             	default:
+            		try {
+            			synchronized(mutex) {
+            				mutex.notifyAll();
+            				zk = new ZooKeeper(address, timeout, this);
+            				mutex = new Integer(-1);
+            				dead = false;
+            			}
+            		} catch (IOException e) {
+            			e.printStackTrace();
+            		}
             		break;
             } 	
         } else {

@@ -52,23 +52,28 @@ public class SyncWorker extends SyncPrimitive {
         TABLE_NAME = tableName;
 
         if (zk != null) {
-            try {
-                Stat s = zk.exists(stateRoot, false);
-                if (s == null) {
-                    zk.create(stateRoot, new byte[0], Ids.OPEN_ACL_UNSAFE,
-                            CreateMode.PERSISTENT);
-                }
-                s = zk.exists(lockRoot, false);
-                if (s == null) {
-                	zk.create(lockRoot, new byte[0], Ids.OPEN_ACL_UNSAFE,
-                            CreateMode.PERSISTENT);
-                }
-            } catch (KeeperException e) {
-            	System.err.println("Keeper exception when instantiating Datix: "
-                                + e.toString());
-            } catch (InterruptedException e) {
-            	System.err.println("Interrupted exception");
-            }
+        	while (true) {
+        		try {
+        			Stat s = zk.exists(stateRoot, false);
+        			if (s == null) {
+        				zk.create(stateRoot, new byte[0], Ids.OPEN_ACL_UNSAFE,
+        						CreateMode.PERSISTENT);
+        			}
+        			s = zk.exists(lockRoot, false);
+        			if (s == null) {
+        				zk.create(lockRoot, new byte[0], Ids.OPEN_ACL_UNSAFE,
+        						CreateMode.PERSISTENT);
+        			}
+        			return;
+        		} catch (KeeperException e) {
+        			LOG.info("Keeper exception when instantiating Datix: "
+                                	+ e.toString());
+        			e.printStackTrace();
+        		} catch (InterruptedException e) {
+        			LOG.info("Interrupted exception");
+        			e.printStackTrace();
+        		}
+        	}
         }
 	}
 	
@@ -105,50 +110,66 @@ public class SyncWorker extends SyncPrimitive {
 	}
 	
 	public boolean exists() {
-		try {
-			if (zk.getChildren(stateRoot, false).size() != 0 || zk.getChildren(lockRoot, false).size() != 0) 
-					return true;
-		} catch (KeeperException e) {
-			LOG.info(e.toString());
-		} catch (InterruptedException e) {
-			LOG.info(e.toString());
+		while (true) {
+			try {
+				if (zk.getChildren(stateRoot, false).size() != 0 || zk.getChildren(lockRoot, false).size() != 0) 
+						return true;
+				else return false;
+			} catch (KeeperException e) {
+				LOG.info(e.toString());
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				LOG.info(e.toString());
+				e.printStackTrace();
+			}
 		}
-		return false;
+//		return false;
 	}
 	
 	public boolean writeState(HashMap<Integer, ArrayList<double[]>> newPoints) {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
         ObjectOutputStream o;
-		try {
-			State st = new State(MappingCache.getFileMapping(), newPoints, KDtreeCache.getKd());
-			o = new ObjectOutputStream(b);
-			o.writeObject(st);
-			byte[] state = b.toByteArray();
+        while (true) {
+        	try {
+        		State st = new State(MappingCache.getFileMapping(), newPoints, KDtreeCache.getKd());
+        		o = new ObjectOutputStream(b);
+        		o.writeObject(st);
+        		byte[] state = b.toByteArray();
 			
-			zk.create(stateRoot + "/state", state, Ids.OPEN_ACL_UNSAFE, 
-        			CreateMode.PERSISTENT_SEQUENTIAL);
-//	        LOG.info("State written to Zookeeper");
+        		zk.create(stateRoot + "/state", state, Ids.OPEN_ACL_UNSAFE, 
+        				CreateMode.PERSISTENT_SEQUENTIAL);
+//	            LOG.info("State written to Zookeeper");
 	        
-	        return true;
-		} catch (KeeperException e) {
-			System.err.println( e.toString());
-		} catch (InterruptedException e) {
-			System.err.println(e.toString());
-		} catch (IOException e) {
-			System.err.println(e.toString());
-		}
-		return false;
+        		return true;
+        	} catch (KeeperException e) {
+        		LOG.info("*****" + e.toString());
+        		e.printStackTrace();
+        	} catch (InterruptedException e) {
+        		LOG.info("*****" + e.toString());
+        		e.printStackTrace();
+        	} catch (IOException e) {
+        		LOG.info("*****");
+        		System.err.println(e.toString());
+        		e.printStackTrace();
+        	}
+        }
+//		return false;
 	}
 	
 	private void releaseLock(String pathName) {
 //		LOG.info("Done with the lock. Releasing pathName: " + pathName);
-		try {
-			zk.delete(pathName, 0);
+		while (true) {
+			try {
+				zk.delete(pathName, 0);
+				return;
 //			LOG.info("Successfully released lock!!!");
-		} catch (InterruptedException e) {
-			LOG.info(e.toString());
-		} catch (KeeperException e) {
-			LOG.info(e.toString());
+			} catch (InterruptedException e) {
+				LOG.info(e.toString());
+				e.printStackTrace();
+			} catch (KeeperException e) {
+				LOG.info(e.toString());
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -156,50 +177,54 @@ public class SyncWorker extends SyncPrimitive {
 		Stat stat = null;
 		
             synchronized (mutex) {
-            	try {
-                	if (!dead) {
-                		String pathName = zk.create(lockRoot + "/writelock", new byte[0], 
-                				Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
-            			String myName = pathName.substring(15);
-                		while (true) {
-                			List<String> list = zk.getChildren(lockRoot, false);
-                			Collections.sort(list);
-                			int pos =0;
-                			for(String s : list){
-//                    			LOG.info("Checking: " + s.substring(9)+" , "+myName);
-                				if(s.substring(9).equals(myName)){
-                					break;
-                				}
-                				pos++;
-                			}
-//                			LOG.info("position: " + pos);
-                			if (pos==0) {     
-                				getState();
-                				return pathName;
-                			}
-                			int prePos =pos-1;
-//                			LOG.info("Checking exists: " + lockRoot + "/writeLock" +list.get(prePos).substring(9));
-                			stat = zk.exists(lockRoot + "/writeLock" +list.get(prePos).substring(9), true);
-                			if (stat == null) 
-                				continue;
-                			else {
-//                				LOG.info("Going to wait because someone else is trying to write");
-                				mutex.wait();
-                			}
-                		}
-                	} else {
-                		return null;
-                	}
-            	} catch (KeeperException e) {
-            		System.err.println("Keeper exception when trying to read data "
-            				+ "from Zookeeper: " + e.toString());
-            	} catch (InterruptedException e) {
-            		System.err.println("Interrupted exception when trying to read data "
-            				+ "from Zookeeper: " + e.toString());
+            	while (true) {
+            		try {
+            			if (!dead) {
+            				String pathName = zk.create(lockRoot + "/writelock", new byte[0], 
+            						Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+            				String myName = pathName.substring(15);
+            				while (true) {
+            					List<String> list = zk.getChildren(lockRoot, false);
+            					Collections.sort(list);
+            					int pos =0;
+            					for(String s : list){
+//                    				LOG.info("Checking: " + s.substring(9)+" , "+myName);
+            						if(s.substring(9).equals(myName)){
+            							break;
+            						}
+            						pos++;
+            					}
+//                				LOG.info("position: " + pos);
+            					if (pos==0) {     
+            						getState();
+                					return pathName;
+            					}
+            					int prePos =pos-1;
+//                				LOG.info("Checking exists: " + lockRoot + "/writeLock" +list.get(prePos).substring(9));
+            					stat = zk.exists(lockRoot + "/writeLock" +list.get(prePos).substring(9), true);
+            					if (stat == null) 
+            						continue;
+            					else {
+//                					LOG.info("Going to wait because someone else is trying to write");
+            						mutex.wait();
+            					}
+            				}
+            			} else {
+            				return null;
+            			}
+            		} catch (KeeperException e) {
+            			LOG.info("!!!Keeper exception when trying to read data "
+            					+ "from Zookeeper: " + e.toString());
+            			e.printStackTrace();
+            		} catch (InterruptedException e) {
+            			LOG.info("!!!Interrupted exception when trying to read data "
+            					+ "from Zookeeper: " + e.toString());
+            			e.printStackTrace();
+            		}
             	}
             }
 //         should never reach this point
-			return null;
+//			return null;
 	}
 	
 	public void blockingStateRead() {	
@@ -208,16 +233,18 @@ public class SyncWorker extends SyncPrimitive {
             	if (!dead) {
             		getState();
 //                	LOG.info("Going to wait for poll-reading");
-                	/*try {
+                	try {
 						mutex.wait();
 					} catch (InterruptedException e) {
 						LOG.info(e.toString());
-					}*/
-                	try {
+						e.printStackTrace();
+					}
+                	/*try {
 						Thread.sleep(500);
 					} catch (InterruptedException e) {
 						LOG.info(e.toString());
-					}
+						e.printStackTrace();
+					}*/
                 } else {
                 	return;
                 }
@@ -249,13 +276,14 @@ public class SyncWorker extends SyncPrimitive {
 		if ((int) splitResult[0] != -1) {
 //			LOG.info("Going to split node now!");
 			//TODO load balance partitions among workers
+			List<Integer> workers = topo.getComponentTasks("worker");
 			Random ran = new Random();
-			int worker1 = ran.nextInt(boltNo) + 1;
-			int worker2 = ran.nextInt(boltNo) + 1;
+			int worker1 = ran.nextInt(workers.size());
+			int worker2 = ran.nextInt(workers.size());
 			while (worker2 == worker1) {
-				worker2 = ran.nextInt(boltNo) + 1;
+				worker2 = ran.nextInt(workers.size());
 			}
-			MappingCache.updateMapping("" + (int)splitResult[1], "worker" + worker1, ""+(int) splitResult[2], "worker" + worker2);
+			MappingCache.updateMapping("" + (int)splitResult[1], "" + workers.get(worker1), ""+(int) splitResult[2], "" + workers.get(worker2));
 			
 			// create new partitions in Hive
 			String[] addCommand = new String[] {"hive", "-e", "ALTER TABLE " + TABLE_NAME 
@@ -263,28 +291,32 @@ public class SyncWorker extends SyncPrimitive {
 			try {
 				executeCommand(addCommand);
 			} catch (IOException e) {
-				System.err.println(e.toString());
+				LOG.info("!!!" + e.toString());
+				e.printStackTrace();
 			} catch (InterruptedException e) {
-				System.err.println(e.toString());
+				LOG.info("!!!" + e.toString());
+				e.printStackTrace();
 			}
 			addCommand = new String[] {"hive", "-e", "ALTER TABLE " + TABLE_NAME 
 					+" ADD PARTITION (part = '" + (int) splitResult[2] + "') location 'part=" + (int) splitResult[2] + "';"};
 			try {
 				executeCommand(addCommand);
 			} catch (IOException e) {
-				System.err.println(e.toString());
+				LOG.info(e.toString());
+				e.printStackTrace();
 			} catch (InterruptedException e) {
-				System.err.println(e.toString());
+				LOG.info(e.toString());
+				e.printStackTrace();
 			}
 			
 			// move data to new partitions
-			Thread copyThread = new Thread(new CopyThread((int)splitResult[0], 
+			/*Thread copyThread = new Thread(new CopyThread((int)splitResult[0], 
 					(int)splitResult[1], (int) splitResult[2], splitResult[3], (int) splitResult[4], TABLE_NAME));
-			copyThread.start();
+			copyThread.start();*/
 			
-			/*Path pt = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
+			Path pt = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
 					+ "/part=" + oldId + "/part-" + oldId + ".gz");
-//			while (true) {
+			while (true) {
 				try {
 					FileSystem fs = FileSystem.get(new Configuration());
 					BufferedReader br = new BufferedReader(new BufferedReader(
@@ -331,11 +363,11 @@ public class SyncWorker extends SyncPrimitive {
 					br.close();
 					bwLeft.close();
 					bwRight.close();
-//					break;
+					break;
 				} catch (IOException e) {
 					System.err.println(e.toString());
 				}
-//			}
+			}
 			
 			String[] delCommand = new String[] {"hive", "-e", "ALTER TABLE " + TABLE_NAME 
 					+" DROP PARTITION (part = '" + oldId + "');"};
@@ -345,7 +377,7 @@ public class SyncWorker extends SyncPrimitive {
 				System.err.println(e.toString());
 			} catch (InterruptedException e) {
 				System.err.println(e.toString());
-			}*/
+			}
 			
 			// update zookeeper views
 			this.writeState(newPoints);

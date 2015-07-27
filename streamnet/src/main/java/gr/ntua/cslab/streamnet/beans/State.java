@@ -3,11 +3,13 @@ package gr.ntua.cslab.streamnet.beans;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import gr.ntua.cslab.streamnet.kdtree.KdTree;
+import gr.ntua.cslab.streamnet.zookeeper.SyncPrimitive;
 
 public class State implements Serializable {
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 4370513757672577183L;
 	private Map<String, String> fileMapping;
 	private Map<Integer, ArrayList<double[]>> points;
 	private KdTree<Long> kd;

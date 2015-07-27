@@ -39,16 +39,17 @@ public class ExclamationBolt extends BaseRichBolt {
     	if (!tuple.getString(0).contains("!")) {
     		Random ran = new Random();
     		int worker = -1;
+    		List<Integer> l = _topo.getComponentTasks("worker");
     		for (int i = 0; i < randomNo; i++) {
-    			worker = ran.nextInt(boltNo) + 1;
+    			worker = ran.nextInt(l.size());
     		}
-    		while (name.equals("worker" + worker))
-    			worker = ran.nextInt(boltNo) + 1;
-    		List<Integer> l = _topo.getComponentTasks("worker" + worker);
+//    		while (name.equals("worker" + worker))
+//    			worker = ran.nextInt(l.size());
+//    		List<Integer> l = _topo.getComponentTasks("worker" + worker);
 //    		LOG.info("List: " + l + " for worker: " + worker);
     		String out = tuple.getString(0) + "!";
-    		LOG.info("Sending record: " + tuple.getString(0) + " to appropriate worker: worker" + worker);
-    		_collector.emitDirect(l.get(0), new Values(out));
+    		LOG.info("Sending record: " + tuple.getString(0) + " to appropriate worker: " + worker);
+    		_collector.emitDirect(l.get(worker), new Values(out));
     		LOG.info("After emit");
     	}
     	else {

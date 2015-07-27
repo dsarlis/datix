@@ -51,26 +51,26 @@ public class Main {
         
         if (topology.equals("kdtree")) {
         	BoltDeclarer bd = null;
-        	for (int i = 1; i <= boltNo; i ++) {
-        		bd = builder.setBolt("worker" + i, new SFlowBolt("worker" + i, boltNo, splitSize, fullStore), boltPar);
+//        	for (int i = 1; i <= boltNo; i ++) {
+        		bd = builder.setBolt("worker", new SFlowBolt("worker", boltNo, splitSize, fullStore), boltNo);
 //        		for (int j = 1; j <= spoutNo; j++) {
         		bd = bd.shuffleGrouping("words");
 //        		}
-        		for (int k = 1; k <= boltNo; k++) {
-        			bd = bd.directGrouping("worker" + k);
-        		}
-        	}
+//        		for (int k = 1; k <= boltNo; k++) {
+        			bd = bd.directGrouping("worker");
+//        		}
+//        	}
         }
         else if (topology.equals("exclamation")) {
         	BoltDeclarer bd = null;
-        	for (int i = 1; i <= boltNo; i ++) {
-        		bd = builder.setBolt("worker" + i, new ExclamationBolt("worker" + i, boltNo, splitSize), boltPar);
+//        	for (int i = 1; i <= boltNo; i ++) {
+        		bd = builder.setBolt("worker", new ExclamationBolt("worker", boltNo, splitSize), boltNo);
         		bd = bd.shuffleGrouping("words");
-        		for (int k = 1; k <= boltNo; k++) {
-        			if (i != k)
-        				bd = bd.directGrouping("worker" + k);
-        		}
-        	}
+//        		for (int k = 1; k <= boltNo; k++) {
+//        			if (i != k)
+        		bd = bd.directGrouping("worker");
+//        		}
+//        	}
         }
         else {
         	BoltDeclarer bd = null;

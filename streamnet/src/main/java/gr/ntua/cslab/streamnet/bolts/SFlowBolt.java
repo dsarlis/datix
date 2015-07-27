@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.zip.GZIPOutputStream;
 
@@ -50,6 +51,7 @@ public class SFlowBolt extends BaseRichBolt {
 	private int boltNo;
 	private int splitSize;
 	private int fullStore;
+	private int myTaskId;
 	
 	public SFlowBolt(String boltName, int boltNo, int splitSize, int fullStore) {
 		this.boltName = boltName;
@@ -109,12 +111,12 @@ public class SFlowBolt extends BaseRichBolt {
 				int partitionId = pInfo.getPartitionId();
 				double[] point = pInfo.getPoint();
 			
-				String worker = MappingCache.getFileMapping().get("" + partitionId);
+				int workerId = Integer.parseInt(MappingCache.getFileMapping().get("" + partitionId));
 			
-				List<Integer> myList = _topo.getComponentTasks(boltName);
+//				List<Integer> myList = _topo.getComponentTasks(boltName);
 //				LOG.info("List of IDs: " + myList.toString());
 				// if record belongs to another worker send it there
-				if ( !worker.equals(boltName) || myList.get(partitionId % myList.size()) != _topo.getThisTaskId() ) {
+				if ( workerId != myTaskId ) {
 					/*SFlowsCache.updateCachedSflows(partitionId, sFlowRecord);
 					
 					if (SFlowsCache.fullCachedSflows()) {
@@ -132,10 +134,11 @@ public class SFlowBolt extends BaseRichBolt {
 					}*/
 					
 //					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId());
-//					LOG.info("Sending record to appropriate worker");
-					List<Integer> l = _topo.getComponentTasks(worker);
+//					LOG.info("Sending record to appropriate worker: " + workerId);
+//					List<Integer> l = _topo.getComponentTasks(workerId);
 //					LOG.info("List of worker ids: " + l);
-					_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord));		
+//					_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord));		
+					_collector.emitDirect(workerId, new Values(sFlowRecord));	
 				}
 				else {
 //					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId() +
@@ -170,6 +173,7 @@ public class SFlowBolt extends BaseRichBolt {
 											+ TABLE_NAME + "/part=" + k + "/part-" + k + ".gz")).getLen();
 								} catch (IOException e1) {
 									LOG.info(e1.getMessage());
+									e1.printStackTrace();
 								}
 								if (length < splitSize) {
 									// file is below block size, so just write data to it
@@ -196,7 +200,8 @@ public class SFlowBolt extends BaseRichBolt {
 											keysRemoved.add(k);
 											break;
 										} catch (IOException e) {
-//											LOG.info(e.getMessage());
+											LOG.info(e.getMessage());
+											e.printStackTrace();
 										}		
 									}
 								}
@@ -213,11 +218,12 @@ public class SFlowBolt extends BaseRichBolt {
 								for (String sFlowRecord1 : SFlowsCache.getSflowsToStore().get(k).getSflowsList()) {
 									pInfo = getPartitionNumber(sFlowRecord1);
 									partitionId = pInfo.getPartitionId();
-									String worker1 = MappingCache.getFileMapping().get("" + partitionId);
-									List<Integer> l = _topo.getComponentTasks(worker1);
+									int worker1 = Integer.parseInt(MappingCache.getFileMapping().get("" + partitionId));
+//									List<Integer> l = _topo.getComponentTasks(worker1);
 									// emit direct to the correct worker
 //									LOG.info("Sending record to appropriate worker");
-									_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord1));
+//									_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord1));
+									_collector.emitDirect(worker1, new Values(sFlowRecord1));
 									keysRemoved.add(k);
 								}
 							}
@@ -252,17 +258,16 @@ public class SFlowBolt extends BaseRichBolt {
 			KDtreeCache.setKd(new KdTree<Long>(KDtreeCache.getDimensions().length,
 					KDtreeCache.getBucketSize()));
 			MappingCache.setFileMapping(new HashMap <String, String>());
-			MappingCache.updateMapping("1", "worker1");
-			LeafPointsCache.setPoints(new HashMap<Integer, ArrayList<double[]>>());
-			if (boltName.equals("worker1")) {
-				if (_topo.getThisTaskId() == _topo.getComponentTasks(boltName).get(0)) {
-					sw.writeState(null);
-				}
+			MappingCache.updateMapping("1", "" + _topo.getComponentTasks("worker").get(0));
+			LeafPointsCache.setPoints(new ConcurrentHashMap<Integer, ArrayList<double[]>>());
+			if (_topo.getThisTaskId() == _topo.getComponentTasks("worker").get(0)) {
+				sw.writeState(null);
 			}
 		}
 		else {
 			sw.getState();
 		}
+		myTaskId = topo.getThisTaskId();
 		SFlowsCache.setCachedSflows(new HashMap<Integer, String>());
 		SFlowsCache.setSflowsToStore(new HashMap<Integer, SflowsList>());
 		SFlowsCache.setFullStore(fullStore);
