@@ -31,6 +31,10 @@ public class KafkaClient {
 	}
 	
 	public static void main(String[] args) throws Exception {
+		/*
+		 *  Usage: KafkaClient path_to_file partitionNumber cutoff
+		 * */
+		
 		loadProperties();
 		
 		FILENAME = args[0];

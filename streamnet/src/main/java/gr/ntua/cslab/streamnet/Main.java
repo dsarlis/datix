@@ -26,7 +26,10 @@ public class Main {
 	private static final String TOPIC_NAME = "sflows";
 	
 	public static void main(String[] args) throws Exception {
-		
+		/*
+		 * Usage: Main hive_table topology_name spoutNo spoutPar boltNo boltPar splitSize max_spout_pending 
+		 * 				       executor_receiver_buffer executor_sender_buffer timeout receiver_buffer fullCached fullStore topology_type
+		 * */
         // create and start Storm Topology
         BrokerHosts brokerHosts = new ZkHosts("master:2181");
         

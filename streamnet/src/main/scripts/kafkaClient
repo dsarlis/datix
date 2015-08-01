@@ -17,9 +17,12 @@ PIDFILE=/tmp/kafka-client.pid
 
 start() {
     [ -f $PIDFILE ] && echo "Kafka Client already running ($(cat $PIDFILE))" && exit 0
-    java -Dname=kafkaClient -cp $CLASSPATH  gr.ntua.cslab.streamnet.KafkaClient &
+    #java -Dname=kafkaClient -cp $CLASSPATH  gr.ntua.cslab.streamnet.KafkaClient /data/sflow.2013-07-31_12-00-07.3600sec.pcap.gz &
+    #java -Dname=kafkaClient -cp $CLASSPATH  gr.ntua.cslab.streamnet.KafkaClient /mnt/test.gz 4 50 &
+    java -Dname=kafkaClient -cp $CLASSPATH  gr.ntua.cslab.streamnet.KafkaClient /mnt/aggregated.sflows.gz $1 $2 &
     echo $! > $PIDFILE;
 }
+
 
 stop() {
     PID=$(cat $PIDFILE 2>/dev/null)
@@ -39,7 +42,7 @@ status() {
 
 case $1 in
     start)
-        start;
+        start $2 $3;
     ;;
     stop)   
         stop;

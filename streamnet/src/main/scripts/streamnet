@@ -10,16 +10,13 @@ LIB_DIR=$STREAMNET_HOME/lib
 CONF_DIR=$STREAMNET_HOME/conf
 
 
-CLASSPATH=$CONF_DIR
-CLASSPATH=$CLASSPATH:$(echo $LIB_DIR/*.jar | tr ' ' ':')
-CLASSPATH=$CLASSPATH:$STREAMNET_HOME/StreamNet.jar
+#CLASSPATH=$CONF_DIR
+#CLASSPATH=$CLASSPATH:$(echo $LIB_DIR/*.jar | tr ' ' ':')
+#CLASSPATH=$CLASSPATH:$STREAMNET_HOME/StreamNet.jar
 CLASSPATH=$CLASSPATH:/opt/hadoop-2.6.0/etc/hadoop:/opt/hadoop-2.6.0/share/hadoop/common/lib2/*:/opt/hadoop-2.6.0/share/hadoop/common/*:/opt/hadoop-2.6.0/share/hadoop/hdfs:/opt/hadoop-2.6.0/share/hadoop/hdfs/lib/*:/opt/hadoop-2.6.0/share/hadoop/hdfs/*:/opt/hadoop-2.6.0/share/hadoop/yarn/lib/*:/opt/hadoop-2.6.0/share/hadoop/yarn/*:/opt/hadoop-2.6.0/share/hadoop/mapreduce/lib/*:/opt/hadoop-2.6.0/share/hadoop/mapreduce/*:/contrib/capacity-scheduler/*.jar
-PIDFILE=/tmp/streamnet.pid
 
 start() {
-    [ -f $PIDFILE ] && echo "StreamNet already running ($(cat $PIDFILE))" && exit 0
-    java -Dname=StreamNet -cp $CLASSPATH  gr.ntua.cslab.streamnet.Main &
-    echo $! > $PIDFILE;
+	storm jar /opt/streamnet/StreamNet.jar gr.ntua.cslab.streamnet.Main sflows_with_tree_partitioned StreamNet $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13}
 }
 
 stop() {
@@ -40,7 +37,7 @@ status() {
 
 case $1 in
     start)
-        start;
+	start $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14};
     ;;
     stop)   
         stop;
@@ -55,4 +52,3 @@ case $1 in
         echo "$0 {start|stop|status|restart}"
     ;;
 esac
-
