@@ -131,14 +131,17 @@ public class SyncPrimitive implements Watcher {
     			bw.close();
     			return;
     		} catch (KeeperException e) {
+        		restartZK();
     			LOG.info("!!!Keeper exception when trying to read data "
     					+ "from Zookeeper: " + e.toString());
     			e.printStackTrace();
     		} catch (InterruptedException e) {
+//        		restartZK();
     			LOG.info("!!!Interrupted exception when trying to read data "
     					+ "from Zookeeper: " + e.toString());
     			e.printStackTrace();
     		} catch (IOException e) {
+//        		restartZK();
     			LOG.info("!!!IO exception when trying to read data "
     					+ "from Zookeeper: " + e.toString());
     			e.printStackTrace();
@@ -147,6 +150,19 @@ public class SyncPrimitive implements Watcher {
     			e.printStackTrace();
     		}
     	}
+    }
+
+    public void restartZK() {
+		LOG.info("Restarting zookeeper!! :)" );
+			try {
+				zk.close();
+				zk = new ZooKeeper(address, timeout, this);
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			dead = false;
     }
 
     synchronized public void process(WatchedEvent event) {
@@ -162,40 +178,24 @@ public class SyncPrimitive implements Watcher {
             		// disconnected will be delivered (in order of course)
             		break;
             	case Expired:
-            		// It's all over
-            		try {
-            			synchronized(mutex) {
-            				mutex.notifyAll();
-            				zk = new ZooKeeper(address, timeout, this);
-            				mutex = new Integer(-1);
-            				dead = false;
-            			}
-            		} catch (IOException e) {
-            			e.printStackTrace();
+            		synchronized(mutex) {
+            			mutex.notifyAll();
+            			restartZK();
+            			mutex = new Integer(-1);
             		}
             		break;
             	case Disconnected:
-            		try {
-            			synchronized (mutex) {
-            				mutex.notifyAll();
-            				zk = new ZooKeeper(address, timeout, this);
-            				mutex = new Integer(-1);
-            				dead = false;
-            			}
-            		} catch (IOException e) {
-            			e.printStackTrace();
+            		synchronized (mutex) {
+            			mutex.notifyAll();
+            			restartZK();
+            			mutex = new Integer(-1);
             		}
             		break;
             	default:
-            		try {
-            			synchronized(mutex) {
-            				mutex.notifyAll();
-            				zk = new ZooKeeper(address, timeout, this);
-            				mutex = new Integer(-1);
-            				dead = false;
-            			}
-            		} catch (IOException e) {
-            			e.printStackTrace();
+            		synchronized(mutex) {
+            			mutex.notifyAll();
+            			restartZK();
+            			mutex = new Integer(-1);
             		}
             		break;
             } 	

@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,6 +51,9 @@ public class SFlowBolt extends BaseRichBolt {
 	private int splitSize;
 	private int fullStore;
 	private int myTaskId;
+	private int totalCount;
+	private int countWritten;
+	private int countSent;
 	
 	public SFlowBolt(String boltName, int boltNo, int splitSize, int fullStore) {
 		this.boltName = boltName;
@@ -110,6 +112,12 @@ public class SFlowBolt extends BaseRichBolt {
 				PartitionInfo pInfo = getPartitionNumber(sFlowRecord);
 				int partitionId = pInfo.getPartitionId();
 				double[] point = pInfo.getPoint();
+				totalCount++;
+				
+				if (totalCount % 1000 == 0) {
+					LOG.info("SelfMetrics -> Total records: " + totalCount + " Records Written: " + countWritten + 
+							" Records Sent to other workers: " + countSent);
+				}
 			
 				int workerId = Integer.parseInt(MappingCache.getFileMapping().get("" + partitionId));
 			
@@ -117,28 +125,8 @@ public class SFlowBolt extends BaseRichBolt {
 //				LOG.info("List of IDs: " + myList.toString());
 				// if record belongs to another worker send it there
 				if ( workerId != myTaskId ) {
-					/*SFlowsCache.updateCachedSflows(partitionId, sFlowRecord);
-					
-					if (SFlowsCache.fullCachedSflows()) {
-						for (int key: SFlowsCache.getCachedSflows().keySet()) {
-							// emit direct to the correct worker
-							String sflows = SFlowsCache.getCachedSflows().get(key);
-							LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId());
-							LOG.info("Sending record to appropriate worker");
-							String worker1 = MappingCache.getFileMapping().get("" + key);
-							List<Integer> l = _topo.getComponentTasks(worker1);
-							LOG.info("List of worker ids: " + l);
-							_collector.emitDirect(l.get(key % l.size()), new Values(sflows));
-						}
-						SFlowsCache.setCachedSflows(new HashMap<Integer, String>());
-					}*/
-					
-//					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId());
-//					LOG.info("Sending record to appropriate worker: " + workerId);
-//					List<Integer> l = _topo.getComponentTasks(workerId);
-//					LOG.info("List of worker ids: " + l);
-//					_collector.emitDirect(l.get(partitionId % l.size()), new Values(sFlowRecord));		
 					_collector.emitDirect(workerId, new Values(sFlowRecord));	
+					countSent++;
 				}
 				else {
 //					LOG.info("Worker name: " + boltName + " id: " + _topo.getThisTaskId() +
@@ -191,7 +179,7 @@ public class SFlowBolt extends BaseRichBolt {
 												bw.newLine();
 												// increment counter of processed records
 //												count++;
-												
+												countWritten++;											
 											}
 											bw.close();
 //											updateMetrics(count);
@@ -249,6 +237,9 @@ public class SFlowBolt extends BaseRichBolt {
 		_collector = collector;
 		_topo = topo;
 		int waitTime = 10000;
+		totalCount = 0;
+		countWritten = 0;
+		countSent = 0;
 		// initialize metrics
 //		initMetrics(topo);
 		// initialize memory caches

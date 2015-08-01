@@ -66,10 +66,12 @@ public class SyncWorker extends SyncPrimitive {
         			}
         			return;
         		} catch (KeeperException e) {
+//            		restartZK();
         			LOG.info("Keeper exception when instantiating Datix: "
                                 	+ e.toString());
         			e.printStackTrace();
         		} catch (InterruptedException e) {
+//            		restartZK();
         			LOG.info("Interrupted exception");
         			e.printStackTrace();
         		}
@@ -116,9 +118,11 @@ public class SyncWorker extends SyncPrimitive {
 						return true;
 				else return false;
 			} catch (KeeperException e) {
+//        		restartZK();
 				LOG.info(e.toString());
 				e.printStackTrace();
 			} catch (InterruptedException e) {
+//        		restartZK();
 				LOG.info(e.toString());
 				e.printStackTrace();
 			}
@@ -142,12 +146,15 @@ public class SyncWorker extends SyncPrimitive {
 	        
         		return true;
         	} catch (KeeperException e) {
+//        		restartZK();
         		LOG.info("*****" + e.toString());
         		e.printStackTrace();
         	} catch (InterruptedException e) {
+//        		restartZK();
         		LOG.info("*****" + e.toString());
         		e.printStackTrace();
         	} catch (IOException e) {
+//        		restartZK();
         		LOG.info("*****");
         		System.err.println(e.toString());
         		e.printStackTrace();
@@ -164,9 +171,11 @@ public class SyncWorker extends SyncPrimitive {
 				return;
 //			LOG.info("Successfully released lock!!!");
 			} catch (InterruptedException e) {
+//        		restartZK();
 				LOG.info(e.toString());
 				e.printStackTrace();
 			} catch (KeeperException e) {
+//        		restartZK();
 				LOG.info(e.toString());
 				e.printStackTrace();
 			}
@@ -213,10 +222,12 @@ public class SyncWorker extends SyncPrimitive {
             				return null;
             			}
             		} catch (KeeperException e) {
+//                		restartZK();
             			LOG.info("!!!Keeper exception when trying to read data "
             					+ "from Zookeeper: " + e.toString());
             			e.printStackTrace();
             		} catch (InterruptedException e) {
+//                		restartZK();
             			LOG.info("!!!Interrupted exception when trying to read data "
             					+ "from Zookeeper: " + e.toString());
             			e.printStackTrace();
@@ -310,74 +321,9 @@ public class SyncWorker extends SyncPrimitive {
 			}
 			
 			// move data to new partitions
-			/*Thread copyThread = new Thread(new CopyThread((int)splitResult[0], 
+			Thread copyThread = new Thread(new CopyThread((int)splitResult[0], 
 					(int)splitResult[1], (int) splitResult[2], splitResult[3], (int) splitResult[4], TABLE_NAME));
-			copyThread.start();*/
-			
-			Path pt = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
-					+ "/part=" + oldId + "/part-" + oldId + ".gz");
-			while (true) {
-				try {
-					FileSystem fs = FileSystem.get(new Configuration());
-					BufferedReader br = new BufferedReader(new BufferedReader(
-							new InputStreamReader(new GZIPInputStream(fs.open(pt)), "UTF-8")));
-					Path ptLeft = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
-							+ "/part=" + leftId + "/part-" + leftId + ".gz");
-					BufferedWriter bwLeft = new BufferedWriter(new OutputStreamWriter(
-							new GZIPOutputStream(fs.create(ptLeft))));
-					Path ptRight = new Path("hdfs://master:9000/opt/warehouse/" + TABLE_NAME 
-							+ "/part=" + rightId + "/part-" + rightId + ".gz");
-					BufferedWriter bwRight = new BufferedWriter(new OutputStreamWriter(
-							new GZIPOutputStream(fs.create(ptRight))));
-					String line;
-					while ((line = br.readLine()) != null) {
-						String[] parts1 = line.split(" ");
-						double value = 0;
-				
-						switch (splitDimension) {
-						case 0:	value = Double.parseDouble(parts1[1]);
-							break;
-						case 1:	value = Double.parseDouble(parts1[3]);
-						case 2:	SimpleDateFormat formatter = 
-											new SimpleDateFormat("yyyy-MM-dd");
-					 					try {
-					 							Date dateStr = formatter.parse(parts1[8]);
-					 							value = (double) dateStr.getTime();
-					 					} catch (ParseException e) {
-					 							e.printStackTrace();
-					 					}
-					 					break;
-	                     
-						default: System.err.println("Dimension number " + splitDimension);
-	            		 				break;
-						}
-						if (value > splitValue) {
-							bwRight.write(line);
-							bwRight.newLine();
-						}
-						else {
-							bwLeft.write(line);
-							bwLeft.newLine();
-						}
-					}
-					br.close();
-					bwLeft.close();
-					bwRight.close();
-					break;
-				} catch (IOException e) {
-					System.err.println(e.toString());
-				}
-			}
-			
-			String[] delCommand = new String[] {"hive", "-e", "ALTER TABLE " + TABLE_NAME 
-					+" DROP PARTITION (part = '" + oldId + "');"};
-			try {
-				executeCommand(delCommand);
-			} catch (IOException e) {
-				System.err.println(e.toString());
-			} catch (InterruptedException e) {
-				System.err.println(e.toString());
-			}
+			copyThread.start();
 			
 			// update zookeeper views
 			this.writeState(newPoints);
